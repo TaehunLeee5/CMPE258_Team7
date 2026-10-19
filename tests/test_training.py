@@ -1,6 +1,7 @@
 import csv
 import json
 
+import pytest
 import torch
 
 from wm.config import apply_override
@@ -35,3 +36,21 @@ def test_resume_continues_from_last_epoch(small_cfg, tmp_path):
     assert trainer.start_epoch == 2
     trainer.fit()
     assert torch.load(last, weights_only=False)["epoch"] == 2
+
+
+def test_fgas_run_updates_sampler_from_validation(small_cfg, tmp_path):
+    apply_override(small_cfg, f"experiment.output_dir={tmp_path.as_posix()}")
+    apply_override(small_cfg, "train.epochs=2")
+    apply_override(small_cfg, "fgas.enabled=true")
+    apply_override(small_cfg, "fgas.update_at_start=true")
+    trainer = Trainer(small_cfg)
+    trainer.fit()
+
+    history = json.loads((tmp_path / small_cfg["experiment"]["name"] / "fgas_history.json").read_text())
+    assert [h["step"] for h in history] == [0, 1]  # at start, after epoch 1 (not after the final epoch)
+    latest = {r["attack"]: r["new_prob"] for r in history[-1]["rows"]}
+    assert trainer.sampler.probs == pytest.approx(latest)
+    with open(tmp_path / small_cfg["experiment"]["name"] / "metrics.csv", newline="") as f:
+        rows = list(csv.DictReader(f))
+    first_update = {r["attack"]: r["new_prob"] for r in history[0]["rows"]}
+    assert float(rows[0]["prob_resize"]) == pytest.approx(first_update["resize"])

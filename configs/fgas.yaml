@@ -1,0 +1,15 @@
+# FGAS continuation: start from the uniform baseline weights, measure attack-wise
+# validation accuracy, re-weight attack sampling toward failures, keep training.
+_base_: baseline.yaml
+
+experiment:
+  name: fgas_continue
+
+train:
+  epochs: 10
+  init_checkpoint: runs/baseline_uniform/best.pt
+
+fgas:
+  enabled: true
+  update_at_start: true     # first update uses the baseline's validation results
+  update_interval: 2        # then re-adapt every 2 epochs

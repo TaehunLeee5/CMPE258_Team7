@@ -1,0 +1,10 @@
+# Control for the FGAS comparison: identical to configs/fgas.yaml (same starting
+# weights, epochs and optimizer reset) but attack sampling stays uniform.
+_base_: baseline.yaml
+
+experiment:
+  name: baseline_continue
+
+train:
+  epochs: 10
+  init_checkpoint: runs/baseline_uniform/best.pt

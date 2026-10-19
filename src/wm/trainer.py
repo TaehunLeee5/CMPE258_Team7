@@ -5,12 +5,16 @@ Loss = image_loss_weight * MSE(watermarked, cover)
 
 One attack is drawn per batch by `AttackSampler` (uniform for the baseline).
 After every epoch the model is evaluated separately under every attack in
-`attacks.eval`. Run artifacts written to `<output_dir>/<name>/`:
+`attacks.eval`. With `fgas.enabled`, every `fgas.update_interval` epochs (and
+optionally once before training, `fgas.update_at_start`) those validation
+accuracies are turned into a new sampling distribution by FGAS, which the
+sampler uses from the next batch on. Run artifacts in `<output_dir>/<name>/`:
 
     config.yaml    resolved config          run_info.json  environment / git SHA
     metrics.csv    one row per epoch        metrics.jsonl  full per-epoch records
     best.pt        weights of best epoch    last.pt        full state for --resume
     best_eval.json attack-wise validation results of best.pt
+    fgas_history.json  every FGAS update (FGAS runs only)
 """
 
 import csv
@@ -30,6 +34,7 @@ from .attacks import AttackSampler, build_attacks
 from .config import resolve_device, save_config, set_seed
 from .data import build_loaders
 from .evaluate import evaluate_attackwise
+from .fgas import build_fgas, format_table
 from .messages import random_messages
 from .metrics import bit_accuracy, psnr
 from .models import build_model
@@ -90,6 +95,7 @@ class Trainer:
         self.train_attacks = build_attacks(attack_cfg["train"], attack_cfg["params"]).to(self.device)
         self.eval_attacks = build_attacks(attack_cfg["eval"], attack_cfg["params"]).to(self.device)
         self.sampler = AttackSampler(attack_cfg["train"], attack_cfg.get("initial_probs"), seed=self.seed)
+        self.fgas = build_fgas(cfg, self.sampler.probs) if cfg["fgas"]["enabled"] else None
 
         self.start_epoch = 1
         self.best_score = -math.inf
@@ -105,6 +111,8 @@ class Trainer:
             self.sampler.load_state_dict(ckpt["sampler"])
             self.start_epoch = ckpt["epoch"] + 1
             self.best_score = ckpt.get("best_score", -math.inf)
+            if self.fgas is not None and ckpt.get("fgas"):
+                self.fgas.load_state_dict(ckpt["fgas"])
             print(f"Resumed from {train_cfg['resume']} at epoch {self.start_epoch}")
         elif train_cfg.get("init_checkpoint"):
             ckpt = torch.load(train_cfg["init_checkpoint"], map_location=self.device, weights_only=False)
@@ -116,7 +124,7 @@ class Trainer:
                  "sampler_probs": dict(self.sampler.probs)}
         if full:
             state.update(optimizer=self.optimizer.state_dict(), sampler=self.sampler.state_dict(),
-                         best_score=self.best_score)
+                         best_score=self.best_score, fgas=self.fgas.state_dict() if self.fgas else None)
         torch.save(state, path)
 
     # --------------------------------------------------------------- training
@@ -152,6 +160,15 @@ class Trainer:
     def validate(self):
         return evaluate_attackwise(self.model, self.val_loader, self.eval_attacks, self.device, seed=self.seed)
 
+    def fgas_update(self, result, step):
+        """Feed attack-wise validation accuracy to FGAS and hand the new distribution to the sampler."""
+        accuracies = {name: result["attacks"][name]["bit_acc"] for name in self.sampler.names}
+        self.sampler.set_probs(self.fgas.update(accuracies, step=step))
+        with open(self.run_dir / "fgas_history.json", "w", encoding="utf-8") as f:
+            json.dump(self.fgas.history, f, indent=2)
+        print(f"FGAS update (after epoch {step}):", flush=True)
+        print(format_table(self.fgas.history[-1]["rows"]), flush=True)
+
     def _log(self, row, record):
         csv_path = self.run_dir / "metrics.csv"
         new_file = not csv_path.exists()
@@ -170,6 +187,8 @@ class Trainer:
 
         epochs = self.cfg["train"]["epochs"]
         result = None
+        if self.fgas is not None and self.cfg["fgas"].get("update_at_start") and self.start_epoch == 1:
+            self.fgas_update(self.validate(), step=0)
         for epoch in range(self.start_epoch, epochs + 1):
             start = time.time()
             probs_used = dict(self.sampler.probs)
@@ -195,4 +214,8 @@ class Trainer:
             print(f"[epoch {epoch}/{epochs}] loss={train_stats['train_loss']:.4f} "
                   f"psnr={result['image_quality']['psnr']:.2f} ssim={result['image_quality']['ssim']:.3f} "
                   f"bit_acc: {accs} ({row['epoch_time_s']:.0f}s)", flush=True)
+
+            interval = self.cfg["fgas"].get("update_interval", 1)
+            if self.fgas is not None and epoch % interval == 0 and epoch < epochs:
+                self.fgas_update(result, step=epoch)
         return result
