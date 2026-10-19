@@ -54,3 +54,11 @@ def test_fgas_run_updates_sampler_from_validation(small_cfg, tmp_path):
         rows = list(csv.DictReader(f))
     first_update = {r["attack"]: r["new_prob"] for r in history[0]["rows"]}
     assert float(rows[0]["prob_resize"]) == pytest.approx(first_update["resize"])
+
+
+def test_image_loss_weight_waits_for_trigger_then_ramps():
+    from wm.trainer import image_loss_weight
+    cfg = {"image_loss_weight": 20.0, "image_loss_weight_start": 1.0, "image_loss_warmup_epochs": 4}
+    assert image_loss_weight(cfg, 5, ramp_start=None) == 1.0
+    assert [image_loss_weight(cfg, e, ramp_start=3) for e in (3, 4, 5, 6, 9)] == [5.75, 10.5, 15.25, 20.0, 20.0]
+    assert image_loss_weight({**cfg, "image_loss_warmup_epochs": 0}, 1, ramp_start=None) == 20.0

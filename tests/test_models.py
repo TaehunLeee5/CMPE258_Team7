@@ -32,3 +32,16 @@ def test_gradients_reach_encoder(small_cfg):
     for name, module in (("encoder", model.encoder), ("decoder", model.decoder)):
         grads = [p.grad for p in module.parameters() if p.grad is not None]
         assert grads and any(g.abs().sum() > 0 for g in grads), f"no gradient in {name}"
+
+
+def test_replicate_and_spatial_message_embeddings(small_cfg):
+    from wm.config import apply_override
+    for embed, pool in (("replicate", 1), ("spatial", 4)):
+        apply_override(small_cfg, f"model.message_embed={embed}")
+        apply_override(small_cfg, f"model.decoder_pool={pool}")
+        model = build_model(small_cfg)
+        size = small_cfg["data"]["image_size"]
+        for side in (size, size + 8):  # divisible and non-divisible by the message grid
+            cover = torch.rand(2, 3, side, side)
+            watermarked, _, logits = model(cover, random_messages(2, 32))
+            assert watermarked.shape == cover.shape and logits.shape == (2, 32)

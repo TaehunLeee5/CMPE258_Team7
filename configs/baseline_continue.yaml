@@ -8,3 +8,4 @@ experiment:
 train:
   epochs: 10
   init_checkpoint: runs/baseline_uniform/best.pt
+  image_loss_warmup_epochs: 0   # starting weights are already trained: use the final image weight
