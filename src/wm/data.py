@@ -110,42 +110,45 @@ class FixedCropDataset(Dataset):
         return crop.float() / 255.0
 
 
-def load_split_images(data_cfg, seed):
-    """Return (train_images, val_images) as lists of uint8 CHW tensors."""
+def load_split_images(data_cfg, split, seed):
+    """Return the prepared `split` ("train" or "val") images as uint8 CHW tensors."""
+    count = data_cfg["num_train_images"] if split == "train" else data_cfg["num_val_images"]
     if data_cfg.get("synthetic", False):
         side = max(data_cfg["image_size"] * 2, 64)
-        return (
-            synthetic_images(data_cfg["num_train_images"], side, side, seed),
-            synthetic_images(data_cfg["num_val_images"], side, side, seed + 1),
-        )
-    root = Path(data_cfg["prepared_root"])
-    train_dir, val_dir = root / "train", root / "val"
-    if not train_dir.is_dir() or not val_dir.is_dir():
+        return synthetic_images(count, side, side, seed if split == "train" else seed + 1)
+    directory = Path(data_cfg["prepared_root"]) / split
+    if not directory.is_dir():
         raise FileNotFoundError(
-            f"Prepared DIV2K not found under {root}. Run scripts/download_div2k.py and "
+            f"Prepared DIV2K split not found at {directory}. Run scripts/download_div2k.py and "
             "scripts/prepare_div2k.py first (or set data.synthetic=true for a smoke test)."
         )
-    return (
-        load_images(train_dir, data_cfg["num_train_images"]),
-        load_images(val_dir, data_cfg["num_val_images"]),
-    )
+    return load_images(directory, count)
+
+
+def build_train_dataset(cfg):
+    data_cfg = cfg["data"]
+    images = load_split_images(data_cfg, "train", cfg["experiment"]["seed"])
+    return RandomCropDataset(images, data_cfg["image_size"], data_cfg["train_samples_per_epoch"])
+
+
+def build_val_dataset(cfg):
+    data_cfg, seed = cfg["data"], cfg["experiment"]["seed"]
+    images = load_split_images(data_cfg, "val", seed)
+    return FixedCropDataset(images, data_cfg["image_size"], data_cfg["val_crops_per_image"], seed)
 
 
 def build_datasets(cfg):
-    data_cfg, seed = cfg["data"], cfg["experiment"]["seed"]
-    train_images, val_images = load_split_images(data_cfg, seed)
-    train_ds = RandomCropDataset(train_images, data_cfg["image_size"], data_cfg["train_samples_per_epoch"])
-    val_ds = FixedCropDataset(val_images, data_cfg["image_size"], data_cfg["val_crops_per_image"], seed)
-    return train_ds, val_ds
+    return build_train_dataset(cfg), build_val_dataset(cfg)
+
+
+def _loader(dataset, cfg, drop_last):
+    return DataLoader(dataset, batch_size=cfg["train"]["batch_size"], shuffle=False, drop_last=drop_last,
+                      num_workers=cfg["data"].get("num_workers", 0), pin_memory=torch.cuda.is_available())
+
+
+def build_val_loader(cfg):
+    return _loader(build_val_dataset(cfg), cfg, drop_last=False)
 
 
 def build_loaders(cfg):
-    train_ds, val_ds = build_datasets(cfg)
-    batch_size = cfg["train"]["batch_size"]
-    workers = cfg["data"].get("num_workers", 0)
-    pin = torch.cuda.is_available()
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=False, drop_last=True,
-                              num_workers=workers, pin_memory=pin)
-    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, drop_last=False,
-                            num_workers=workers, pin_memory=pin)
-    return train_loader, val_loader
+    return _loader(build_train_dataset(cfg), cfg, drop_last=True), build_val_loader(cfg)
