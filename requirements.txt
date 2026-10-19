@@ -1,0 +1,10 @@
+# torch/torchvision are intentionally unpinned: on Colab the preinstalled CUDA build is used.
+# For local development install the CUDA build from https://pytorch.org first if needed.
+torch>=2.1
+torchvision>=0.16
+numpy
+pillow
+pyyaml
+tqdm
+matplotlib
+pytest

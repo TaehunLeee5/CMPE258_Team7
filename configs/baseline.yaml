@@ -1,0 +1,58 @@
+# Baseline: HiDDeN-inspired encoder -> distortion -> decoder trained with
+# UNIFORM attack sampling. Every experiment parameter lives in this file;
+# override from the CLI with e.g. `--set train.epochs=5 data.synthetic=true`.
+
+experiment:
+  name: baseline_uniform
+  seed: 42
+  output_dir: runs          # run artifacts go to <output_dir>/<name>/
+  device: auto              # auto | cuda | cpu
+
+data:
+  raw_root: data/DIV2K                # where download_div2k.py extracts the zips
+  prepared_root: data/div2k_prepared  # where prepare_div2k.py writes the cached subset
+  num_train_images: 600               # first N of the 800 DIV2K train HR images
+  num_val_images: 100                 # official DIV2K validation HR images
+  prepare_short_side: 512             # images are downscaled once so the short side = this
+  image_size: 128                     # training / validation crop size
+  train_samples_per_epoch: 4096       # random crops drawn per epoch
+  val_crops_per_image: 2              # fixed (seeded) crops per validation image
+  num_workers: 0
+  synthetic: false                    # true -> random smooth images (tests / smoke runs only)
+
+message:
+  length: 32                          # watermark bits
+
+model:
+  encoder_channels: 64
+  encoder_blocks: 4
+  decoder_channels: 64
+  decoder_blocks: 7
+
+train:
+  epochs: 60
+  batch_size: 32
+  lr: 0.001
+  image_loss_weight: 20.0     # weight on MSE(watermarked, cover), images in [0, 1]
+  message_loss_weight: 1.0    # weight on BCE(decoded logits, message bits)
+  log_interval: 50            # batches between progress-bar metric refreshes
+  init_checkpoint: null       # load model weights only (e.g. start FGAS from the baseline)
+  resume: null                # resume full training state from a last.pt
+
+attacks:
+  train: [noise, blur, brightness, resize]
+  eval: [clean, noise, blur, brightness, resize]
+  initial_probs: null         # null -> uniform over attacks.train
+  params:
+    noise: {std: 0.03}
+    blur: {kernel_size: 5, sigma: 1.0}
+    brightness: {min_factor: 0.7, max_factor: 1.3}
+    resize: {scale: 0.5}
+
+fgas:
+  enabled: false
+  update_at_start: false      # run one FGAS update on the loaded weights before epoch 1
+  update_interval: 1          # epochs between FGAS updates
+  min_prob: 0.1               # probability floor so no attack disappears
+  power: 1.0                  # p ~ failure^power (1.0 = proportional to failure)
+  momentum: 0.0               # p_new = momentum * p_old + (1 - momentum) * p_target

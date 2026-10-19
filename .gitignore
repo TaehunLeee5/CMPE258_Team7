@@ -1,0 +1,14 @@
+# Environments / caches
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Large / machine-local artifacts
+data/
+runs/
+
+# Internal planning notes (not part of the submission)
+implementation.md
