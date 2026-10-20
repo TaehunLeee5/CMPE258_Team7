@@ -1,0 +1,6 @@
+attack,bit_acc,msg_acc
+clean,1.0000,1.0000
+noise,0.9990,0.9675
+blur,0.9996,0.9875
+brightness,0.9979,0.9850
+resize,0.9988,0.9700

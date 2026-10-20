@@ -1,0 +1,47 @@
+{
+  "source_eval": "results/baseline_eval.json",
+  "source_checkpoint": "runs/baseline_uniform/best.pt",
+  "source_epoch": 50,
+  "fgas_settings": {
+    "min_prob": 0.1,
+    "power": 1.0,
+    "momentum": 0.0
+  },
+  "rule": "p = min_prob + (1 - K*min_prob) * failure^power / sum(failure^power); failure = 1 - bit_acc",
+  "rows": [
+    {
+      "attack": "noise",
+      "val_bit_acc": 0.998984375,
+      "failure": 0.0010156249999999645,
+      "old_prob": 0.25,
+      "new_prob": 0.22999999999999668
+    },
+    {
+      "attack": "blur",
+      "val_bit_acc": 0.999609375,
+      "failure": 0.0003906249999999778,
+      "old_prob": 0.25,
+      "new_prob": 0.14999999999999764
+    },
+    {
+      "attack": "brightness",
+      "val_bit_acc": 0.997890625,
+      "failure": 0.002109374999999969,
+      "old_prob": 0.25,
+      "new_prob": 0.36999999999999855
+    },
+    {
+      "attack": "resize",
+      "val_bit_acc": 0.998828125,
+      "failure": 0.0011718750000000444,
+      "old_prob": 0.25,
+      "new_prob": 0.2500000000000071
+    }
+  ],
+  "new_probs": {
+    "noise": 0.22999999999999668,
+    "blur": 0.14999999999999764,
+    "brightness": 0.36999999999999855,
+    "resize": 0.2500000000000071
+  }
+}

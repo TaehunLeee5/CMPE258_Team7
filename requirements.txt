@@ -7,4 +7,5 @@ pillow
 pyyaml
 tqdm
 matplotlib
+scikit-image
 pytest

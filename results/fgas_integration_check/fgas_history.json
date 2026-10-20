@@ -1,0 +1,35 @@
+[
+  {
+    "step": 0,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.998984375,
+        "failure": 0.0010156249999999645,
+        "old_prob": 0.25,
+        "new_prob": 0.22999999999999668
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.999609375,
+        "failure": 0.0003906249999999778,
+        "old_prob": 0.25,
+        "new_prob": 0.14999999999999764
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.997890625,
+        "failure": 0.002109374999999969,
+        "old_prob": 0.25,
+        "new_prob": 0.36999999999999855
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.998828125,
+        "failure": 0.0011718750000000444,
+        "old_prob": 0.25,
+        "new_prob": 0.2500000000000071
+      }
+    ]
+  }
+]

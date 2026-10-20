@@ -1,0 +1,71 @@
+experiment:
+  name: fgas_integration_check
+  seed: 42
+  output_dir: runs
+  device: auto
+data:
+  raw_root: data/DIV2K
+  prepared_root: data/div2k_prepared
+  num_train_images: 600
+  num_val_images: 100
+  prepare_short_side: 512
+  image_size: 128
+  train_samples_per_epoch: 4096
+  val_crops_per_image: 4
+  num_workers: 0
+  synthetic: false
+message:
+  length: 32
+model:
+  encoder_channels: 64
+  encoder_blocks: 4
+  message_embed: spatial
+  message_grid: 16
+  message_channels: 8
+  decoder_channels: 64
+  decoder_blocks: 7
+  decoder_pool: 4
+train:
+  epochs: 2
+  batch_size: 32
+  lr: 0.001
+  image_loss_weight: 20.0
+  image_loss_weight_start: 1.0
+  image_loss_ramp_trigger_acc: 0.9
+  image_loss_ramp_latest_epoch: 10
+  image_loss_warmup_epochs: 0
+  message_loss_weight: 1.0
+  log_interval: 50
+  init_checkpoint: runs/baseline_uniform/best.pt
+  resume: null
+attacks:
+  train:
+  - noise
+  - blur
+  - brightness
+  - resize
+  eval:
+  - clean
+  - noise
+  - blur
+  - brightness
+  - resize
+  initial_probs: null
+  params:
+    noise:
+      std: 0.1
+    blur:
+      kernel_size: 9
+      sigma: 2.0
+    brightness:
+      min_factor: 0.3
+      max_factor: 1.7
+    resize:
+      scale: 0.25
+fgas:
+  enabled: true
+  update_at_start: true
+  update_interval: 2
+  min_prob: 0.1
+  power: 1.0
+  momentum: 0.0

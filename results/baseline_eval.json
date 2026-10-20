@@ -1,0 +1,60 @@
+{
+  "checkpoint": "runs/baseline_uniform/best.pt",
+  "epoch": 50,
+  "experiment": "baseline_uniform",
+  "sampler_probs": {
+    "noise": 0.25,
+    "blur": 0.25,
+    "brightness": 0.25,
+    "resize": 0.25
+  },
+  "attack_params": {
+    "noise": {
+      "std": 0.1
+    },
+    "blur": {
+      "kernel_size": 9,
+      "sigma": 2.0
+    },
+    "brightness": {
+      "min_factor": 0.3,
+      "max_factor": 1.7
+    },
+    "resize": {
+      "scale": 0.25
+    }
+  },
+  "device": "cuda",
+  "attacks": {
+    "clean": {
+      "bit_acc": 1.0,
+      "msg_acc": 1.0
+    },
+    "noise": {
+      "bit_acc": 0.998984375,
+      "msg_acc": 0.9675
+    },
+    "blur": {
+      "bit_acc": 0.999609375,
+      "msg_acc": 0.9875
+    },
+    "brightness": {
+      "bit_acc": 0.997890625,
+      "msg_acc": 0.985
+    },
+    "resize": {
+      "bit_acc": 0.998828125,
+      "msg_acc": 0.97
+    }
+  },
+  "image_quality": {
+    "psnr": 32.969970703125,
+    "ssim": 0.9293537855148315
+  },
+  "worst_case": {
+    "attack": "brightness",
+    "bit_acc": 0.997890625
+  },
+  "mean_attacked_bit_acc": 0.998828125,
+  "num_samples": 400
+}

@@ -117,10 +117,17 @@ results/      committed result files (JSON/CSV, baseline checkpoint)
 | Taehun Lee | Baseline experiment runs, robustness benchmark, tables and plots | TODO below |
 
 **TEAM_TODO, Niveditha**
-- Validate the DIV2K preprocessing. Inspect `data/div2k_prepared/manifest.json` and save sample crops from `build_datasets(cfg)`.
-- Cross-check `wm.metrics.psnr`/`ssim` against `skimage.metrics` on a few watermarked/cover pairs.
-- Figure 1: original, watermarked, and amplified |difference| for several validation crops. Load `results/baseline_uniform/best.pt` with `build_model(ckpt["cfg"])` and call `model.encoder(cover, message)`. Label the difference as amplified.
-- Dataset and literature-survey text for the report.
+Run `python scripts/validate_div2k.py` after preprocessing to check the manifest, split contents, RGB mode, resized dimensions, and to export deterministic validation-crop examples under `results/div2k_samples/`. The PSNR/SSIM unit test cross-checks the local metrics against `skimage.metrics`.
+
+Generate Figure 1 after the baseline checkpoint is available with `python scripts/figure1.py --checkpoint results/baseline_uniform/best.pt`. The script uses fixed validation crops and seeded messages; its third column is the amplified absolute pixel difference (10x), not the unscaled residual.
+
+### Dataset and literature context
+
+DIV2K is a high-resolution image dataset introduced for image restoration research. This project uses the first 600 of its 800 training images and the official 100-image validation split. Images are converted to RGB and resized with Lanczos interpolation while preserving aspect ratio until the shorter side is 512 pixels. Training uses random 128x128 crops with horizontal flips; validation uses four fixed, seed-controlled crops per image (400 crops total). The validation metrics therefore describe this fixed crop protocol, not full-resolution benchmark performance.
+
+HiDDeN established an end-to-end learned image-watermarking approach in which an encoder embeds a message, differentiable distortions model common image transformations, and a decoder recovers the message. Watermark Anything with Localized Messages and Lightweight-Mark represent subsequent work on localized watermarking and efficient learned watermarking, respectively. This project adopts the encoder-distortion-decoder framing but studies a different question: whether redistributing training batches toward attacks with lower validation bit accuracy improves worst-case robustness relative to uniform attack sampling. The proposed Failure-Guided Attack Sampling (FGAS) rule uses attack-wise validation failures to adjust sampling probabilities while retaining a minimum probability for every attack; controlled comparisons should use the same model, data, and training budget.
+
+The prepared DIV2K cache and `results/baseline_uniform/best.pt` are not included in a fresh clone. The validation command and Figure 1 generation therefore require the dataset preparation steps above and the baseline run to be completed first; report numerical findings only after those runs.
 
 **TEAM_TODO, Taehun**
 - Table 1 and Figure 2 from `results/baseline_eval.json` (clean, noise, blur, brightness, resize).

@@ -1,5 +1,6 @@
 import math
 
+import pytest
 import torch
 
 from wm.attacks import build_attacks
@@ -26,6 +27,33 @@ def test_ssim_identity_and_degradation():
     x = torch.rand(2, 3, 32, 32)
     assert math.isclose(ssim(x, x), 1.0, rel_tol=1e-4)
     assert ssim(x, (x + 0.2 * torch.randn_like(x)).clamp(0, 1)) < 0.9
+
+
+def test_psnr_and_ssim_match_skimage():
+    skimage_metrics = pytest.importorskip("skimage.metrics")
+    generator = torch.Generator().manual_seed(19)
+    reference = torch.rand(2, 3, 48, 48, generator=generator)
+    comparison = (reference + 0.07 * torch.randn(reference.shape, generator=generator)).clamp(0, 1)
+
+    expected_psnr = [
+        skimage_metrics.peak_signal_noise_ratio(a, b, data_range=1.0)
+        for a, b in zip(reference.numpy(), comparison.numpy())
+    ]
+    expected_ssim = [
+        skimage_metrics.structural_similarity(
+            a.transpose(1, 2, 0),
+            b.transpose(1, 2, 0),
+            data_range=1.0,
+            channel_axis=-1,
+            gaussian_weights=True,
+            sigma=1.5,
+            use_sample_covariance=False,
+        )
+        for a, b in zip(reference.numpy(), comparison.numpy())
+    ]
+
+    assert math.isclose(psnr(reference, comparison), sum(expected_psnr) / 2, abs_tol=1e-5)
+    assert math.isclose(ssim(reference, comparison), sum(expected_ssim) / 2, abs_tol=2e-4)
 
 
 def test_attackwise_evaluation_is_deterministic(small_cfg):

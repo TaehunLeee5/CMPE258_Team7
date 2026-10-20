@@ -10,6 +10,7 @@ fixed crops whose positions are drawn once from the experiment seed, so every
 evaluation sees exactly the same pixels.
 """
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -38,6 +39,54 @@ def load_images(directory, max_images=None):
     if max_images is not None:
         paths = paths[:max_images]
     return [load_image(p) for p in paths]
+
+
+def validate_prepared_manifest(data_cfg):
+    """Validate cached DIV2K files against the preprocessing manifest and config."""
+    root = Path(data_cfg["prepared_root"])
+    manifest_path = root / "manifest.json"
+    if not manifest_path.is_file():
+        raise FileNotFoundError(f"Prepared DIV2K manifest not found at {manifest_path}")
+    with manifest_path.open(encoding="utf-8") as file:
+        manifest = json.load(file)
+
+    short_side = data_cfg["prepare_short_side"]
+    if manifest.get("short_side") != short_side:
+        raise ValueError(
+            f"Manifest short_side is {manifest.get('short_side')}, expected {short_side}"
+        )
+
+    summary = {"short_side": short_side}
+    for split, count_key in (("train", "num_train_images"), ("val", "num_val_images")):
+        entries = manifest.get(split)
+        expected_count = data_cfg[count_key]
+        if not isinstance(entries, list) or len(entries) != expected_count:
+            actual_count = len(entries) if isinstance(entries, list) else "missing"
+            raise ValueError(f"Manifest {split} count is {actual_count}, expected {expected_count}")
+
+        split_dir = root / split
+        expected_names = [Path(entry["source"]).with_suffix(".png").name for entry in entries]
+        actual_names = [path.name for path in list_images(split_dir)]
+        if len(set(expected_names)) != len(expected_names) or sorted(actual_names) != sorted(expected_names):
+            raise ValueError(f"Prepared {split} filenames do not match {manifest_path}")
+
+        for entry, filename in zip(entries, expected_names):
+            original_size = tuple(entry["original_size"])
+            prepared_size = tuple(entry["prepared_size"])
+            if len(original_size) != 2 or len(prepared_size) != 2:
+                raise ValueError(f"Invalid dimensions in {split} manifest entry for {filename}")
+            scale = short_side / min(original_size)
+            expected_size = (round(original_size[0] * scale), round(original_size[1] * scale))
+            if prepared_size != expected_size or min(prepared_size) != short_side:
+                raise ValueError(f"Invalid prepared dimensions in {split} manifest entry for {filename}")
+            with Image.open(split_dir / filename) as image:
+                if image.mode != "RGB" or image.size != prepared_size:
+                    raise ValueError(
+                        f"{split_dir / filename} has mode/size {image.mode}/{image.size}, "
+                        f"expected RGB/{prepared_size}"
+                    )
+        summary[f"{split}_images"] = expected_count
+    return summary
 
 
 def synthetic_images(count, height, width, seed):

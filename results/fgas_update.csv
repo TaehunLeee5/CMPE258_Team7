@@ -1,0 +1,5 @@
+attack,val_bit_acc,failure,old_prob,new_prob
+noise,0.9990,0.0010,0.2500,0.2300
+blur,0.9996,0.0004,0.2500,0.1500
+brightness,0.9979,0.0021,0.2500,0.3700
+resize,0.9988,0.0012,0.2500,0.2500
