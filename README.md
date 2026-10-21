@@ -114,7 +114,7 @@ results/      committed result files (JSON/CSV, baseline checkpoint)
 |---|---|---|
 | Sabari Iyyappan Duraipandian | Repo structure, DIV2K pipeline, encoder/decoder, distortion layer, uniform sampling, attack-wise validation, FGAS scoring/update, training integration | Done |
 | Niveditha Nandakumar Kamath | Dataset validation, PSNR/SSIM validation, qualitative figures | TODO below |
-| Taehun Lee | Baseline experiment runs, robustness benchmark, tables and plots | TODO below |
+| Taehun Lee | Baseline experiment runs, robustness benchmark, tables and plots | Done |
 
 **TEAM_TODO, Niveditha**
 Run `python scripts/validate_div2k.py` after preprocessing to check the manifest, split contents, RGB mode, resized dimensions, and to export deterministic validation-crop examples under `results/div2k_samples/`. The PSNR/SSIM unit test cross-checks the local metrics against `skimage.metrics`.
@@ -129,7 +129,7 @@ HiDDeN established an end-to-end learned image-watermarking approach in which an
 
 The prepared DIV2K cache and `results/baseline_uniform/best.pt` are not included in a fresh clone. The validation command and Figure 1 generation therefore require the dataset preparation steps above and the baseline run to be completed first; report numerical findings only after those runs.
 
-**TEAM_TODO, Taehun**
+**TEAM_TODO, Taehun[DONE]**
 - Table 1 and Figure 2 from `results/baseline_eval.json` (clean, noise, blur, brightness, resize).
 - Figure 3: training curves from `results/baseline_uniform/metrics.csv`.
 - Table 2 from `results/fgas_update.csv`.
