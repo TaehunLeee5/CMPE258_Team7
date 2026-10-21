@@ -95,17 +95,46 @@ Each training run writes to `runs/<experiment.name>/`:
 
 ## Results (Check-In 2, Colab T4)
 
-_To be filled in from the Colab run: baseline per-attack bit accuracy, PSNR/SSIM, and the FGAS update table._
+Uniform baseline, `configs/baseline.yaml`: 60 epochs on a Tesla T4 (torch 2.11, seed 42). `best.pt` is from epoch 50 and was evaluated on 400 fixed validation crops (`results/baseline_eval.json`). Watermarked vs. cover: **PSNR 32.97 dB, SSIM 0.929**.
+
+| Condition | Bit accuracy | Full-message accuracy (all 32 bits) |
+|---|---|---|
+| Clean | 100.00% | 100.00% |
+| Gaussian noise σ=0.1 | 99.90% | 96.75% |
+| Gaussian blur 9×9, σ=2 | 99.96% | 98.75% |
+| Brightness ×U[0.3, 1.7] | **99.79%** (worst) | 98.50% |
+| Resize ×0.25 and back | 99.88% | 97.00% |
+
+FGAS update computed from these validation results (`results/fgas_update.csv`, floor 0.1):
+
+| Attack | Failure (1 − bit acc) | Uniform p | FGAS p |
+|---|---|---|---|
+| Noise | 0.10% | 0.25 | 0.23 |
+| Blur | 0.04% | 0.25 | 0.15 |
+| Brightness | 0.21% | 0.25 | **0.37** |
+| Resize | 0.12% | 0.25 | 0.25 |
+
+A 2-epoch FGAS integration run (`results/fgas_integration_check/`) confirms the trainer uses these probabilities: brightness got 36 and 51 of 128 batches, against about 32 expected under uniform sampling. That run is only an integration check. The matched FGAS-vs-uniform comparison (Experiment D) is planned for the next check-in.
+
+Figures (`python scripts/report_figures.py`, plus `scripts/figure1.py` for Figure 1):
+
+| | |
+|---|---|
+| ![pipeline](results/figures/architecture.png) | ![robustness](results/figures/robustness.png) |
+| ![training curves](results/figures/training_curves.png) | ![FGAS update](results/figures/fgas_probs.png) |
+
+![attack examples](results/figures/attack_examples.png)
+![Figure 1](results/figure1.png)
 
 ## Repository layout
 
 ```
 configs/      baseline.yaml, fgas.yaml, baseline_continue.yaml
 src/wm/       config, data, messages, models, attacks, metrics, evaluate, fgas, trainer
-scripts/      download_div2k, prepare_div2k, train, evaluate, fgas_update
+scripts/      download_div2k, prepare_div2k, validate_div2k, train, evaluate, fgas_update, figure1, report_figures
 notebooks/    checkin2_colab.ipynb (canonical reproducible run)
 tests/        pytest suite (shapes, gradients, attacks, metrics, FGAS, training loop)
-results/      committed result files (JSON/CSV, baseline checkpoint)
+results/      Colab T4 results (JSON/CSV), baseline checkpoint, figures/
 ```
 
 ## Team ownership and next steps
