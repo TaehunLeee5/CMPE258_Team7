@@ -1,15 +1,24 @@
-"""Report figures built from committed Check-In 2 artifacts.
+"""Report figures built from committed result artifacts.
 
     python scripts/report_figures.py                 # all figures -> results/figures/
     python scripts/report_figures.py --only architecture fgas_probs
 
-Figures:
+Figures (DIV2K baseline):
   architecture     pipeline diagram (encoder -> sampled attack -> decoder, FGAS loop)
   robustness       per-attack bit / full-message accuracy (results/baseline_eval.json)
   training_curves  accuracy, PSNR and image-loss weight per epoch (results/baseline_uniform/metrics.csv)
   fgas_probs       uniform vs FGAS sampling probabilities (results/fgas_update.csv)
   attack_examples  one validation crop: cover, watermarked, and each attack
                    (needs results/baseline_uniform/best.pt and the prepared DIV2K cache)
+
+Figures (hardened benchmark, from --hard-dir, default results/checkin3; skipped if missing):
+  method_bars          uniform vs FGAS bit accuracy per attack, mean +- std over seeds
+                       (main_comparison.csv from scripts/aggregate_seeds.py)
+  fgas_over_time       FGAS sampling probabilities over training (runs/hard_fgas_s42/fgas_history.json)
+  psnr_vs_acc          worst-case and mean attacked accuracy vs PSNR, one point per run
+                       (runs/*/best_test_eval.json)
+  new_attack_examples  JPEG, crop, occlusion, real JPEG and combo on a watermarked crop
+                       (runs/hard_uniform_s42/best.pt and the prepared validation data)
 """
 
 import argparse
@@ -37,7 +46,7 @@ def _save(fig, out_dir, name):
     path = out_dir / f"{name}.png"
     fig.savefig(path, dpi=220, bbox_inches="tight")
     plt.close(fig)
-    print(f"wrote {path.relative_to(ROOT)}")
+    print(f"wrote {path.resolve().relative_to(ROOT) if path.resolve().is_relative_to(ROOT) else path}")
 
 
 def architecture(out_dir):
@@ -225,15 +234,155 @@ def attack_examples(out_dir, index=100):
     _save(fig, out_dir, "attack_examples")
 
 
+HARD_DIR = RESULTS / "checkin3"
+METHODS = {"hard_uniform": ("Uniform", COLORS["uniform"]), "hard_fgas": ("FGAS", COLORS["fgas"])}
+HARD_ATTACKS = ["clean", "noise", "blur", "brightness", "resize", "jpeg", "crop", "occlusion", "jpeg_real", "combo"]
+
+
+def _missing(*paths):
+    gone = [p for p in paths if not Path(p).exists()]
+    for p in gone:
+        print(f"skipped: {p} not found")
+    return bool(gone)
+
+
+def method_bars(out_dir):
+    path = HARD_DIR / "main_comparison.csv"
+    if _missing(path):
+        return
+    stats = {(r["group"], r["metric"]): r for r in _read_csv(path)}
+    methods = [m for m in METHODS if (m, "clean_bit_acc") in stats]
+    names = [a for a in HARD_ATTACKS if all((m, f"{a}_bit_acc") in stats for m in methods)]
+    fig, ax = plt.subplots(figsize=(11, 3.8))
+    w = 0.8 / max(len(methods), 1)
+    for k, method in enumerate(methods):
+        label, color = METHODS[method]
+        rows = [stats[(method, f"{a}_bit_acc")] for a in names]
+        x = [i + (k - (len(methods) - 1) / 2) * w for i in range(len(names))]
+        psnr = stats[(method, "psnr")]
+        ax.bar(x, [100 * float(r["mean"]) for r in rows], w, yerr=[100 * float(r["std"]) for r in rows],
+               capsize=3, color=color, label=f"{label} (n={rows[0]['n']} seeds, "
+                                             f"PSNR {float(psnr['mean']):.2f} ± {float(psnr['std']):.2f} dB)")
+    ax.set_xticks(range(len(names)), names)
+    ax.axvline(len([a for a in names if a not in ("jpeg_real", "combo")]) - 0.5, color="#999999", ls=":", lw=1)
+    ax.set_ylabel("Bit accuracy (%)")
+    ax.set_ylim(50, 101)
+    ax.set_title("DIV2K test set: uniform vs FGAS (training attacks | evaluation-only attacks)", fontsize=10)
+    ax.legend(fontsize=8, frameon=False, loc="upper center", bbox_to_anchor=(0.5, -0.1), ncol=len(methods))
+    _save(fig, out_dir, "method_bars")
+
+
+def fgas_over_time(out_dir, run="hard_fgas_s42"):
+    path = HARD_DIR / "runs" / run / "fgas_history.json"
+    if _missing(path):
+        return
+    history = json.loads(path.read_text())
+    names = [r["attack"] for r in history[0]["rows"]]
+    # Distribution in force from each update until the next one (the first segment is the initial one).
+    starts = [0] + [h["step"] for h in history]
+    ends = starts[1:] + [starts[-1] + (starts[-1] - starts[-2] if len(starts) > 1 else 1)]
+    probs = [[100 * history[0]["rows"][i]["old_prob"]] + [100 * h["rows"][i]["new_prob"] for h in history]
+             for i in range(len(names))]
+    widths = [e - s for s, e in zip(starts, ends)]
+    fig, ax = plt.subplots(figsize=(8, 3.6))
+    bottom = [0.0] * len(starts)
+    for name, values, color in zip(names, probs, plt.get_cmap("tab10").colors):
+        ax.bar(starts, values, widths, bottom=bottom, align="edge", color=color, label=name, linewidth=0)
+        bottom = [b + v for b, v in zip(bottom, values)]
+    ax.set_xlim(starts[0], ends[-1])
+    ax.set_ylim(0, 100)
+    ax.set_xlabel("Epoch (FGAS update after this epoch)")
+    ax.set_ylabel("Sampling probability (%)")
+    ax.set_title(f"FGAS attack distribution over training ({run})", fontsize=10)
+    ax.legend(fontsize=7.5, frameon=False, loc="center left", bbox_to_anchor=(1.0, 0.5))
+    _save(fig, out_dir, "fgas_over_time")
+
+
+def psnr_vs_acc(out_dir):
+    paths = sorted((HARD_DIR / "runs").glob("hard_*_s*/best_test_eval.json"))
+    if not paths:
+        print(f"skipped: no {HARD_DIR / 'runs'}/hard_*_s*/best_test_eval.json")
+        return
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3.6))
+    for path in paths:
+        run = path.parent.name
+        method = run.rsplit("_s", 1)[0]
+        label, color = METHODS.get(method, (method, "#555555"))
+        ev = json.loads(path.read_text())
+        psnr = ev["image_quality"]["psnr"]
+        for ax, value in zip(axes, (ev["worst_case"]["bit_acc"], ev["mean_attacked_bit_acc"])):
+            ax.scatter(psnr, 100 * value, color=color, label=label, s=36)
+            ax.annotate(run.rsplit("_s", 1)[1], (psnr, 100 * value), fontsize=7, xytext=(3, 3),
+                        textcoords="offset points")
+    for ax, title in zip(axes, ("Worst-case attack", "Mean over training attacks")):
+        handles, labels = ax.get_legend_handles_labels()
+        unique = dict(zip(labels, handles))
+        ax.legend(unique.values(), unique.keys(), fontsize=8, frameon=False)
+        ax.set_xlabel("PSNR (dB)")
+        ax.set_ylabel("Bit accuracy (%)")
+        ax.set_title(f"{title} (labels = seed)", fontsize=10)
+    fig.tight_layout()
+    _save(fig, out_dir, "psnr_vs_acc")
+
+
+def new_attack_examples(out_dir, run="hard_uniform_s42", index=10):
+    import torch
+
+    from wm.attacks import build_attacks
+    from wm.config import set_seed
+    from wm.data import build_val_dataset
+    from wm.metrics import psnr
+    from wm.models import build_model
+
+    path = HARD_DIR / "runs" / run / "best.pt"
+    if _missing(path):
+        return
+    ckpt = torch.load(path, map_location="cpu", weights_only=False)
+    cfg = ckpt["cfg"]
+    set_seed(cfg["experiment"]["seed"])
+    model = build_model(cfg)
+    model.load_state_dict(ckpt["model"])
+    model.eval()
+    names = ["jpeg", "crop", "occlusion", "jpeg_real", "combo"]
+    params = dict(cfg["attacks"]["params"])
+    params.update(jpeg={"quality": 50}, crop={"keep": 0.6}, occlusion={"area": 0.35, "fill": 0.5})
+    attacks = build_attacks(names, params)
+    labels = {"jpeg": "Diff. JPEG Q50", "crop": "Crop 60% area", "occlusion": "Occlusion 35%",
+              "jpeg_real": f"Real JPEG Q{params['jpeg_real']['quality']}", "combo": "Resize 0.5 + real JPEG"}
+    cover = build_val_dataset(cfg)[index].unsqueeze(0)
+    message = torch.randint(0, 2, (1, cfg["message"]["length"]), generator=torch.Generator().manual_seed(7)).float()
+    with torch.no_grad():
+        wm = model.encoder(cover, message)
+        residual = (wm - cover).abs()
+        panels = [(cover, "Original"), (wm, f"Watermarked\nPSNR {psnr(wm, cover):.1f} dB"),
+                  (residual / residual.max().clamp(min=1e-8), "|residual| (normalized)")]
+        for name in names:
+            torch.manual_seed(3)
+            attacked = attacks[name](wm)
+            correct = int(((model.decoder(attacked) > 0).float() == message).sum())
+            panels.append((attacked, f"{labels[name]}\n{correct}/32 bits"))
+    fig, axes = plt.subplots(1, len(panels), figsize=(2.1 * len(panels), 2.7))
+    for axis, (img, title) in zip(axes, panels):
+        axis.imshow(img[0].permute(1, 2, 0).clamp(0, 1).numpy())
+        axis.set_title(title, fontsize=7.8)
+        axis.axis("off")
+    fig.tight_layout()
+    _save(fig, out_dir, "new_attack_examples")
+
+
 FIGURES = {"architecture": architecture, "robustness": robustness, "training_curves": training_curves,
-           "fgas_probs": fgas_probs, "attack_examples": attack_examples}
+           "fgas_probs": fgas_probs, "attack_examples": attack_examples, "method_bars": method_bars,
+           "fgas_over_time": fgas_over_time, "psnr_vs_acc": psnr_vs_acc, "new_attack_examples": new_attack_examples}
 
 
 def main():
+    global HARD_DIR
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--only", nargs="*", choices=sorted(FIGURES), default=sorted(FIGURES))
     parser.add_argument("--out-dir", default=str(RESULTS / "figures"))
+    parser.add_argument("--hard-dir", default=str(HARD_DIR), help="collected hardened-benchmark results")
     args = parser.parse_args()
+    HARD_DIR = Path(args.hard_dir)
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     for name in args.only:
