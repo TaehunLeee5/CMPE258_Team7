@@ -1,0 +1,14 @@
+# Main comparison, control: uniform attack sampling on the hardened benchmark.
+# Identical to hard_fgas.yaml except for the fgas block (checked by
+# tests/test_configs.py). Settings come from the calibration runs (calib_*.yaml).
+_base_: hard_base.yaml
+
+experiment:
+  name: hard_uniform
+
+train:
+  epochs: 60
+  image_loss_weight: 100.0
+
+fgas:
+  enabled: false

@@ -1,0 +1,11 @@
+# Calibration run: short uniform-sampling training on the hardened benchmark
+# with final image-loss weight 400. Compared on PSNR, SSIM and per-attack
+# validation accuracy to choose the setting frozen in hard_uniform.yaml.
+_base_: hard_base.yaml
+
+experiment:
+  name: calib_w400
+
+train:
+  epochs: 20
+  image_loss_weight: 400.0

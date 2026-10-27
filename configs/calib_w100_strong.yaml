@@ -1,0 +1,16 @@
+# Calibration run: weight 100 with stronger noise, JPEG and crop. Only needed
+# if the weight sweep leaves every attack at >= 99% bit accuracy.
+_base_: hard_base.yaml
+
+experiment:
+  name: calib_w100_strong
+
+train:
+  epochs: 20
+  image_loss_weight: 100.0
+
+attacks:
+  params:
+    noise: {std: [0.1, 0.2]}
+    jpeg: {quality: [30, 70]}
+    crop: {keep: [0.35, 0.6]}

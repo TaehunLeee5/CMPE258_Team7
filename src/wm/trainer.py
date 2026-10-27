@@ -23,6 +23,7 @@ sampler uses from the next batch on. Run artifacts in `<output_dir>/<name>/`:
     metrics.csv    one row per epoch        metrics.jsonl  full per-epoch records
     best.pt        weights of best epoch    last.pt        full state for --resume
     best_eval.json attack-wise validation results of best.pt
+    best_test_eval.json  best.pt on the held-out test set (only with `data.test`)
     fgas_history.json  every FGAS update (FGAS runs only)
 """
 
@@ -256,4 +257,34 @@ class Trainer:
             interval = self.cfg["fgas"].get("update_interval", 1)
             if self.fgas is not None and epoch % interval == 0 and epoch < epochs:
                 self.fgas_update(result, step=epoch)
+        self.evaluate_best_on_test()
+        return result
+
+    def evaluate_best_on_test(self):
+        """Evaluate best.pt on the held-out test set (`data.test`), incl. evaluation-only attacks.
+
+        The test set is never used for checkpoint selection or FGAS. Crops and
+        messages come from `data.test.seed`, so every training seed is scored on
+        identical inputs. Writes best_test_eval.json.
+        """
+        test_cfg = self.cfg["data"].get("test")
+        best = self.run_dir / "best.pt"
+        if not test_cfg or not best.exists():
+            return None
+        from .data import build_test_loader
+
+        ckpt = torch.load(best, map_location=self.device, weights_only=False)
+        model = build_model(self.cfg).to(self.device)
+        model.load_state_dict(ckpt["model"])
+        attack_cfg = self.cfg["attacks"]
+        names = list(attack_cfg["eval"]) + [n for n in attack_cfg.get("extra_eval", []) if n not in attack_cfg["eval"]]
+        attacks = build_attacks(names, attack_cfg["params"]).to(self.device)
+        result = evaluate_attackwise(model, build_test_loader(self.cfg), attacks, self.device,
+                                     seed=test_cfg.get("seed", 0), primary=self.sampler.names)
+        with open(self.run_dir / "best_test_eval.json", "w", encoding="utf-8") as f:
+            json.dump({"epoch": ckpt["epoch"], "split": "test", **result}, f, indent=2)
+        q = result["image_quality"]
+        print(f"Test set (best.pt, epoch {ckpt['epoch']}): PSNR {q['psnr']:.2f} dB, worst "
+              f"{result['worst_case']['attack']} {result['worst_case']['bit_acc']:.4f}, "
+              f"mean attacked {result['mean_attacked_bit_acc']:.4f}", flush=True)
         return result

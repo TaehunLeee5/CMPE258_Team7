@@ -62,3 +62,33 @@ def test_image_loss_weight_waits_for_trigger_then_ramps():
     assert image_loss_weight(cfg, 5, ramp_start=None) == 1.0
     assert [image_loss_weight(cfg, e, ramp_start=3) for e in (3, 4, 5, 6, 9)] == [5.75, 10.5, 15.25, 20.0, 20.0]
     assert image_loss_weight({**cfg, "image_loss_warmup_epochs": 0}, 1, ramp_start=None) == 20.0
+
+
+def test_best_checkpoint_is_scored_on_the_test_set(small_cfg, tmp_path, monkeypatch):
+    import wm.data
+    from wm.data import build_val_loader
+
+    calls = []
+
+    def fake_test_loader(cfg):  # stands in for the held-out test split
+        calls.append(cfg["data"]["test"]["seed"])
+        return build_val_loader(cfg)
+
+    monkeypatch.setattr(wm.data, "build_test_loader", fake_test_loader, raising=False)
+    apply_override(small_cfg, f"experiment.output_dir={tmp_path.as_posix()}")
+    apply_override(small_cfg, "train.epochs=1")
+    apply_override(small_cfg, "data.test={seed: 0}")
+    apply_override(small_cfg, "attacks.extra_eval=[jpeg_real]")
+    Trainer(small_cfg).fit()
+
+    report = json.loads((tmp_path / small_cfg["experiment"]["name"] / "best_test_eval.json").read_text())
+    assert calls == [0] and report["split"] == "test" and report["epoch"] == 1
+    assert "jpeg_real" in report["attacks"]  # evaluation-only attacks are reported...
+    assert report["worst_case"]["attack"] in small_cfg["attacks"]["train"]  # ...but never the primary metric
+
+
+def test_no_test_evaluation_without_test_block(small_cfg, tmp_path):
+    apply_override(small_cfg, f"experiment.output_dir={tmp_path.as_posix()}")
+    apply_override(small_cfg, "train.epochs=1")
+    Trainer(small_cfg).fit()
+    assert not (tmp_path / small_cfg["experiment"]["name"] / "best_test_eval.json").exists()

@@ -1,0 +1,10 @@
+# Pre-registered fallback (fixed before any main-comparison result): sharper
+# FGAS allocation, p ~ failure^2, which concentrates on the weakest attacks.
+# Only run if hard_fgas misses the success criterion.
+_base_: hard_fgas.yaml
+
+experiment:
+  name: hard_fgas_p2
+
+fgas:
+  power: 2.0

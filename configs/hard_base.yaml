@@ -1,0 +1,68 @@
+# Hardened benchmark (shared base for calibration and the main comparison).
+# Differences from baseline.yaml:
+#   - COCO val2017 for training (4500 train / 500 val); DIV2K valid HR is an
+#     unseen test set used only after training (data.test).
+#   - 7 training attacks incl. differentiable JPEG, crop and occlusion, with
+#     strengths drawn per image from ranges.
+#   - stricter imperceptibility (larger final image-loss weight, target PSNR >= 38 dB).
+# Calibration configs set train.image_loss_weight / strengths on top of this;
+# hard_uniform.yaml and hard_fgas.yaml freeze the chosen setting.
+_base_: baseline.yaml
+
+experiment:
+  name: hard_base
+
+data:
+  dataset: coco
+  coco_raw_root: data/COCO
+  coco_prepared_root: data/coco_prepared
+  num_train_images: 4500
+  num_val_images: 500
+  prepare_short_side: 256             # COCO images are ~640x480; 256 avoids upscaling and fits in RAM
+  val_crops_per_image: 2              # 1000 fixed validation crops
+  test:                               # held-out DIV2K, same crops and messages for every seed
+    prepared_root: data/div2k_prepared
+    split: val
+    num_images: 100
+    crops_per_image: 4
+    seed: 0
+
+train:
+  image_loss_weight: 100.0
+
+attacks:
+  train: [noise, blur, brightness, resize, jpeg, crop, occlusion]
+  eval: [clean, noise, blur, brightness, resize, jpeg, crop, occlusion]
+  extra_eval: [jpeg_real, combo]      # evaluation only (no gradient)
+  params:
+    noise: {std: 0.1}
+    blur: {kernel_size: 9, sigma: 2.0}
+    brightness: {min_factor: 0.3, max_factor: 1.7}
+    resize: {scale: 0.25}
+    jpeg: {quality: [50, 90]}
+    crop: {keep: [0.5, 0.8]}
+    # 25-50% occlusion during training kept the message from being learned at all
+    # (bit accuracy stayed at chance); 10-25% trains normally. The sweep still
+    # evaluates up to 55%.
+    occlusion: {area: [0.1, 0.25], fill: 0.5}
+    jpeg_real: {quality: 50}
+    combo: {stages: [[resize, {scale: 0.5}], [jpeg_real, {quality: 50}]]}
+  # Evaluation-only severity grid (scripts/sweep.py): parameters per level,
+  # from mild to beyond the training strength.
+  sweep:
+    noise: [{std: 0.05}, {std: 0.10}, {std: 0.15}, {std: 0.20}]
+    blur: [{kernel_size: 9, sigma: 1.0}, {kernel_size: 9, sigma: 2.0}, {kernel_size: 13, sigma: 3.0},
+           {kernel_size: 17, sigma: 4.0}]
+    brightness: [{min_factor: 0.7, max_factor: 1.3}, {min_factor: 0.5, max_factor: 1.5},
+                 {min_factor: 0.3, max_factor: 1.7}, {min_factor: 0.1, max_factor: 1.9}]
+    resize: [{scale: 0.75}, {scale: 0.5}, {scale: 0.35}, {scale: 0.25}]
+    jpeg_real: [{quality: 90}, {quality: 70}, {quality: 50}, {quality: 30}, {quality: 10}]
+    crop: [{keep: 0.9}, {keep: 0.7}, {keep: 0.5}, {keep: 0.35}]
+    occlusion: [{area: 0.1}, {area: 0.25}, {area: 0.4}, {area: 0.55}]
+
+fgas:
+  enabled: false
+  update_interval: 2
+  min_prob: 0.05              # 7 attacks: K * min_prob = 0.35
+  power: 1.0
+  momentum: 0.5

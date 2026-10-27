@@ -44,20 +44,23 @@ def prepare_split(src_dir, dst_dir, count, short_side):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--config", default="configs/baseline.yaml")
+    parser.add_argument("--splits", nargs="+", default=["train", "val"], choices=["train", "val"],
+                        help="e.g. --splits val when DIV2K is only needed as a test set")
     args = parser.parse_args()
 
     data_cfg = load_config(args.config)["data"]
     raw_root, out_root = Path(data_cfg["raw_root"]), Path(data_cfg["prepared_root"])
     short_side = data_cfg["prepare_short_side"]
 
-    manifest = {
-        "short_side": short_side,
-        "train": prepare_split(raw_root / "DIV2K_train_HR", out_root / "train", data_cfg["num_train_images"], short_side),
-        "val": prepare_split(raw_root / "DIV2K_valid_HR", out_root / "val", data_cfg["num_val_images"], short_side),
-    }
+    sources = {"train": ("DIV2K_train_HR", data_cfg["num_train_images"]),
+               "val": ("DIV2K_valid_HR", data_cfg["num_val_images"])}
+    manifest = {"short_side": short_side}
+    for split in args.splits:
+        folder, count = sources[split]
+        manifest[split] = prepare_split(raw_root / folder, out_root / split, count, short_side)
     with open(out_root / "manifest.json", "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=1)
-    print(f"Prepared {len(manifest['train'])} train / {len(manifest['val'])} val images in {out_root}")
+    print(f"Prepared {', '.join(f'{len(manifest[s])} {s}' for s in args.splits)} images in {out_root}")
 
 
 if __name__ == "__main__":
