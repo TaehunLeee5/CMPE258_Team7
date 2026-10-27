@@ -6,7 +6,7 @@ and for attack-wise evaluation. Strengths come from `attacks.params` in the conf
 
 A strength given as a `[min, max]` pair is drawn uniformly per image (per batch
 for resize), so training covers a range instead of a single setting. Attacks
-with `trainable = False` (real JPEG) have no gradient
+with `trainable = False` (real JPEG, chains that contain it) have no gradient
 and are for evaluation only.
 
 `params[name]` may carry a `type` key to build a second, differently configured
@@ -219,8 +219,75 @@ class RealJPEG(nn.Module):
         return decoded.to(device=x.device, dtype=x.dtype) / 255
 
 
+class Crop(nn.Module):
+    """Keep a random square window covering `keep` of the image area, resized back to full size.
+
+    Combines translation and scale change. The window is drawn per image and
+    resampled with grid_sample, so the attack stays batched and differentiable.
+    """
+
+    name = "crop"
+
+    def __init__(self, keep=(0.5, 0.8)):
+        super().__init__()
+        self.keep = keep
+
+    def forward(self, x):
+        b = x.shape[0]
+        side = _per_image(self.keep, b, x.device, x.dtype).clamp(1e-3, 1).sqrt()  # fraction of each side
+        max_shift = 1 - side
+        cx = (torch.rand(b, device=x.device, dtype=x.dtype) * 2 - 1) * max_shift
+        cy = (torch.rand(b, device=x.device, dtype=x.dtype) * 2 - 1) * max_shift
+        theta = torch.zeros(b, 2, 3, device=x.device, dtype=x.dtype)
+        theta[:, 0, 0], theta[:, 0, 2] = side, cx
+        theta[:, 1, 1], theta[:, 1, 2] = side, cy
+        grid = F.affine_grid(theta, list(x.shape), align_corners=False)
+        return F.grid_sample(x, grid, mode="bilinear", padding_mode="border", align_corners=False)
+
+
+class Occlusion(nn.Module):
+    """Fill one random rectangle covering `area` of each image with a constant (cropout)."""
+
+    name = "occlusion"
+
+    def __init__(self, area=(0.25, 0.5), fill=0.5):
+        super().__init__()
+        self.area, self.fill = area, fill
+
+    def forward(self, x):
+        b, _, height, width = x.shape
+        area = _per_image(self.area, b, x.device, x.dtype)
+        aspect = torch.exp(torch.empty(b, device=x.device, dtype=x.dtype).uniform_(math.log(0.5), math.log(2.0)))
+        rect_h = (area * aspect).sqrt().clamp(max=1) * height
+        rect_w = (area / aspect).sqrt().clamp(max=1) * width
+        top = torch.rand(b, device=x.device, dtype=x.dtype) * (height - rect_h)
+        left = torch.rand(b, device=x.device, dtype=x.dtype) * (width - rect_w)
+        rows = torch.arange(height, device=x.device, dtype=x.dtype).view(1, -1, 1)
+        cols = torch.arange(width, device=x.device, dtype=x.dtype).view(1, 1, -1)
+        inside_rows = (rows >= top.view(-1, 1, 1)) & (rows < (top + rect_h).view(-1, 1, 1))
+        inside_cols = (cols >= left.view(-1, 1, 1)) & (cols < (left + rect_w).view(-1, 1, 1))
+        mask = (inside_rows & inside_cols).unsqueeze(1).to(x.dtype)
+        return x * (1 - mask) + self.fill * mask
+
+
+class Compose(nn.Module):
+    """Apply several attacks in sequence, e.g. `stages: [[resize, {scale: 0.5}], [jpeg_real, {quality: 50}]]`."""
+
+    name = "combo"
+
+    def __init__(self, stages=(("resize", {"scale": 0.5}), ("jpeg_real", {"quality": 50}))):
+        super().__init__()
+        self.stages = nn.ModuleList(build_attack(stage_name, stage_params) for stage_name, stage_params in stages)
+        self.trainable = all(is_trainable(stage) for stage in self.stages)
+
+    def forward(self, x):
+        for stage in self.stages:
+            x = stage(x)
+        return x
+
+
 ATTACKS = {cls.name: cls for cls in (Identity, GaussianNoise, GaussianBlur, Brightness, Resize,
-                                     DiffJPEG, RealJPEG)}
+                                     DiffJPEG, RealJPEG, Crop, Occlusion, Compose)}
 
 
 def is_trainable(attack):

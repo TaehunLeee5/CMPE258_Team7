@@ -5,7 +5,7 @@ from wm.attacks import ATTACKS, AttackSampler, build_attack, build_attacks, is_t
 from wm.messages import random_messages
 from wm.models import build_model
 
-DIFFERENTIABLE = ["noise", "blur", "brightness", "resize", "jpeg"]
+DIFFERENTIABLE = ["noise", "blur", "brightness", "resize", "jpeg", "crop", "occlusion"]
 
 
 def _textured(n=2, size=32, seed=0):
@@ -25,7 +25,7 @@ def test_attack_preserves_shape_and_range(name):
     assert y.min() >= 0 and y.max() <= 1
 
 
-@pytest.mark.parametrize("name", DIFFERENTIABLE + ["jpeg_real"])
+@pytest.mark.parametrize("name", DIFFERENTIABLE + ["jpeg_real", "combo"])
 def test_attack_changes_image(name):
     x = torch.rand(2, 3, 32, 32) * 0.5 + 0.25
     assert not torch.allclose(build_attacks([name])[name](x), x)
@@ -74,13 +74,15 @@ def test_diff_jpeg_rounding_modes_pass_gradients(rounding):
     assert x.grad.abs().sum() > 0
 
 
-def test_real_jpeg_is_evaluation_only():
+def test_real_jpeg_and_chains_with_it_are_evaluation_only():
     assert not is_trainable(build_attack("jpeg_real"))
+    assert not is_trainable(build_attack("combo"))
+    assert is_trainable(build_attack("combo", {"stages": [["resize", {"scale": 0.5}], ["jpeg", {"quality": 50}]]}))
     with pytest.raises(ValueError):
         build_attacks(["noise", "jpeg_real"], trainable_only=True)
 
 
-@pytest.mark.parametrize("name", ["noise", "jpeg", "resize"])
+@pytest.mark.parametrize("name", ["noise", "jpeg", "crop", "occlusion", "resize"])
 def test_seeded_attacks_are_reproducible(name):
     attack = build_attack(name, {"resize": {"scale": [0.3, 0.7]}}.get(name))
     x = _textured(3, 32)
@@ -90,13 +92,27 @@ def test_seeded_attacks_are_reproducible(name):
     assert torch.equal(first, attack(x))
 
 
-def test_range_strength_is_sampled_per_image_within_bounds():
+def test_noise_range_is_sampled_per_image_within_bounds():
     torch.manual_seed(0)
     noise = build_attack("noise", {"std": [0.05, 0.2]})
     x = torch.full((64, 3, 32, 32), 0.5)
     std = (noise(x) - x).std(dim=(1, 2, 3))
     assert std.min() > 0.04 and std.max() < 0.21
     assert std.std() > 0.02  # different strength per image
+
+
+def test_range_strength_is_sampled_per_image_within_bounds():
+    torch.manual_seed(0)
+    occlusion = build_attack("occlusion", {"area": [0.2, 0.4], "fill": 0.0})
+    x = torch.ones(64, 3, 64, 64)
+    covered = 1 - occlusion(x)[:, 0].mean(dim=(1, 2))
+    assert covered.min() > 0.15 and covered.max() < 0.45  # pixel rounding at the rectangle edges
+    assert covered.std() > 0.02  # different area per image
+
+
+def test_crop_keep_one_is_identity():
+    x = _textured(2, 32)
+    assert torch.allclose(build_attack("crop", {"keep": 1.0})(x), x, atol=1e-5)
 
 
 def test_aliased_attack_instances():
