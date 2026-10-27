@@ -1,9 +1,19 @@
 import pytest
 import torch
 
-from wm.attacks import ATTACKS, AttackSampler, build_attacks
+from wm.attacks import ATTACKS, AttackSampler, build_attack, build_attacks, is_trainable
 from wm.messages import random_messages
 from wm.models import build_model
+
+DIFFERENTIABLE = ["noise", "blur", "brightness", "resize", "jpeg"]
+
+
+def _textured(n=2, size=32, seed=0):
+    """Smooth images with some detail, closer to photos than uniform noise."""
+    generator = torch.Generator().manual_seed(seed)
+    coarse = torch.rand(n, 3, 4, 4, generator=generator)
+    smooth = torch.nn.functional.interpolate(coarse, size=(size, size), mode="bicubic", align_corners=False)
+    return (smooth + 0.03 * torch.randn(n, 3, size, size, generator=generator)).clamp(0, 1)
 
 
 @pytest.mark.parametrize("name", sorted(ATTACKS))
@@ -15,7 +25,7 @@ def test_attack_preserves_shape_and_range(name):
     assert y.min() >= 0 and y.max() <= 1
 
 
-@pytest.mark.parametrize("name", ["noise", "blur", "brightness", "resize"])
+@pytest.mark.parametrize("name", DIFFERENTIABLE + ["jpeg_real"])
 def test_attack_changes_image(name):
     x = torch.rand(2, 3, 32, 32) * 0.5 + 0.25
     assert not torch.allclose(build_attacks([name])[name](x), x)
@@ -27,7 +37,7 @@ def test_attack_strength_is_configurable():
     assert attacks["blur"].kernel.shape[-1] == 7
 
 
-@pytest.mark.parametrize("name", ["noise", "blur", "brightness", "resize"])
+@pytest.mark.parametrize("name", DIFFERENTIABLE)
 def test_gradients_flow_through_attack(small_cfg, name):
     model = build_model(small_cfg)
     size, length = small_cfg["data"]["image_size"], small_cfg["message"]["length"]
@@ -36,6 +46,66 @@ def test_gradients_flow_through_attack(small_cfg, name):
     _, _, logits = model(cover, message, build_attacks([name])[name])
     torch.nn.functional.binary_cross_entropy_with_logits(logits, message).backward()
     assert model.encoder.to_residual.weight.grad.abs().sum() > 0
+
+
+def _mse(a, b):
+    return torch.mean((a - b) ** 2).item()
+
+
+def test_diff_jpeg_high_quality_is_near_identity_and_low_quality_degrades():
+    x = _textured(4, 64)
+    high = build_attack("jpeg", {"quality": 95})(x)
+    low = build_attack("jpeg", {"quality": 10})(x)
+    assert _mse(high, x) < 1e-3  # remaining error is mostly 4:2:0 chroma subsampling, as in real JPEG
+    assert _mse(low, x) > 3 * _mse(high, x)
+
+
+def test_diff_jpeg_matches_real_jpeg_at_quality_50():
+    x = (_textured(4, 64) * 255).round() / 255  # real JPEG sees uint8 pixels
+    simulated = build_attack("jpeg", {"quality": 50})(x)
+    real = build_attack("jpeg_real", {"quality": 50})(x)
+    assert _mse(simulated, real) < 0.1 * _mse(real, x)
+
+
+@pytest.mark.parametrize("rounding", ["ste", "cubic"])
+def test_diff_jpeg_rounding_modes_pass_gradients(rounding):
+    x = _textured(2, 32).requires_grad_(True)
+    build_attack("jpeg", {"quality": 50, "rounding": rounding})(x).sum().backward()
+    assert x.grad.abs().sum() > 0
+
+
+def test_real_jpeg_is_evaluation_only():
+    assert not is_trainable(build_attack("jpeg_real"))
+    with pytest.raises(ValueError):
+        build_attacks(["noise", "jpeg_real"], trainable_only=True)
+
+
+@pytest.mark.parametrize("name", ["noise", "jpeg", "resize"])
+def test_seeded_attacks_are_reproducible(name):
+    attack = build_attack(name, {"resize": {"scale": [0.3, 0.7]}}.get(name))
+    x = _textured(3, 32)
+    torch.manual_seed(7)
+    first = attack(x)
+    torch.manual_seed(7)
+    assert torch.equal(first, attack(x))
+
+
+def test_range_strength_is_sampled_per_image_within_bounds():
+    torch.manual_seed(0)
+    noise = build_attack("noise", {"std": [0.05, 0.2]})
+    x = torch.full((64, 3, 32, 32), 0.5)
+    std = (noise(x) - x).std(dim=(1, 2, 3))
+    assert std.min() > 0.04 and std.max() < 0.21
+    assert std.std() > 0.02  # different strength per image
+
+
+def test_aliased_attack_instances():
+    params = {"jpeg_q30": {"type": "jpeg_real", "quality": 30}, "noise_hard": {"type": "noise", "std": 0.2}}
+    attacks = build_attacks(["jpeg_q30", "noise_hard"], params)
+    assert attacks["jpeg_q30"].quality == 30 and not is_trainable(attacks["jpeg_q30"])
+    assert attacks["noise_hard"].std == 0.2
+    with pytest.raises(KeyError):
+        build_attack("bogus", {"type": "nope"})
 
 
 def test_uniform_sampler_draws_every_attack_and_counts():

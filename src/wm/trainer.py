@@ -113,7 +113,8 @@ class Trainer:
         self.train_loader, self.val_loader = build_loaders(cfg)
         self.model = build_model(cfg).to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=train_cfg["lr"])
-        self.train_attacks = build_attacks(attack_cfg["train"], attack_cfg["params"]).to(self.device)
+        self.train_attacks = build_attacks(attack_cfg["train"], attack_cfg["params"],
+                                           trainable_only=True).to(self.device)
         self.eval_attacks = build_attacks(attack_cfg["eval"], attack_cfg["params"]).to(self.device)
         self.sampler = AttackSampler(attack_cfg["train"], attack_cfg.get("initial_probs"), seed=self.seed)
         self.fgas = build_fgas(cfg, self.sampler.probs) if cfg["fgas"]["enabled"] else None
