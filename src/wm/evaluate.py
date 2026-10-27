@@ -4,6 +4,10 @@ Each validation batch is watermarked once and then decoded separately after
 every attack, so all attacks are compared on identical watermarked images.
 Messages and attack randomness are seeded, and the global RNG state is restored
 afterwards so evaluating in the middle of training does not change training.
+
+Worst-case and mean attacked accuracy are taken over the `primary` attacks (the
+training attacks) when given, so evaluation-only attacks such as real JPEG are
+reported but never drive checkpoint selection or FGAS.
 """
 
 import torch
@@ -13,7 +17,7 @@ from .messages import random_messages
 
 
 @torch.no_grad()
-def evaluate_attackwise(model, loader, attacks, device, seed=0):
+def evaluate_attackwise(model, loader, attacks, device, seed=0, primary=None):
     """Return {"attacks": {name: {bit_acc, msg_acc}}, "image_quality": {psnr, ssim},
     "worst_case": {...}, "num_samples": N}."""
     was_training = model.training
@@ -40,7 +44,8 @@ def evaluate_attackwise(model, loader, attacks, device, seed=0):
     model.train(was_training)
 
     per_attack = {name: {k: v / total for k, v in vals.items()} for name, vals in sums.items()}
-    attacked = {k: v for k, v in per_attack.items() if k != "clean"} or per_attack
+    attacked = {k: v for k, v in per_attack.items() if k != "clean" and (primary is None or k in primary)}
+    attacked = attacked or per_attack
     worst = min(attacked, key=lambda k: attacked[k]["bit_acc"])
     return {
         "attacks": per_attack,

@@ -67,3 +67,18 @@ def test_attackwise_evaluation_is_deterministic(small_cfg):
     assert a == b
     assert set(a["attacks"]) == set(small_cfg["attacks"]["eval"])
     assert a["worst_case"]["attack"] != "clean"
+
+
+def test_worst_and_mean_use_only_primary_attacks(small_cfg):
+    torch.manual_seed(0)
+    model = build_model(small_cfg)
+    _, val_loader = build_loaders(small_cfg)
+    names = ["clean", "noise", "blur", "harsh"]
+    attacks = build_attacks(names, {"harsh": {"type": "noise", "std": 5.0}})  # untrained model: ~chance anyway
+    device = torch.device("cpu")
+    full = evaluate_attackwise(model, val_loader, attacks, device, seed=1)
+    primary = evaluate_attackwise(model, val_loader, attacks, device, seed=1, primary=["noise", "blur"])
+    assert full["attacks"] == primary["attacks"]  # every attack is still reported
+    assert primary["worst_case"]["attack"] in ("noise", "blur")
+    expected_mean = (primary["attacks"]["noise"]["bit_acc"] + primary["attacks"]["blur"]["bit_acc"]) / 2
+    assert primary["mean_attacked_bit_acc"] == pytest.approx(expected_mean)

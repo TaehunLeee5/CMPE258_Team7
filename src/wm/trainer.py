@@ -186,7 +186,8 @@ class Trainer:
         return stats
 
     def validate(self):
-        return evaluate_attackwise(self.model, self.val_loader, self.eval_attacks, self.device, seed=self.seed)
+        return evaluate_attackwise(self.model, self.val_loader, self.eval_attacks, self.device, seed=self.seed,
+                                   primary=self.sampler.names)
 
     def fgas_update(self, result, step):
         """Feed attack-wise validation accuracy to FGAS and hand the new distribution to the sampler."""

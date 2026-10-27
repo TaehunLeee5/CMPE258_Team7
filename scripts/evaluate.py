@@ -5,7 +5,9 @@
 The model/data/attack settings stored in the checkpoint are used, so results
 match training-time validation. Use --set to change e.g. data paths on another
 machine (`--set data.prepared_root=/content/data/div2k_prepared`) or attack
-strengths for a stress test. Writes <out>.json and a table <out>.csv.
+strengths for a stress test. Attacks in `attacks.extra_eval` (e.g. real JPEG,
+combo) are evaluated too; worst-case and mean use the training attacks only.
+Writes <out>.json and a table <out>.csv.
 """
 
 import argparse
@@ -43,8 +45,11 @@ def main():
     model = build_model(cfg)
     model.load_state_dict(ckpt["model"])
     model.to(device)
-    attacks = build_attacks(cfg["attacks"]["eval"], cfg["attacks"]["params"]).to(device)
-    result = evaluate_attackwise(model, build_val_loader(cfg), attacks, device, seed=seed)
+    attack_cfg = cfg["attacks"]
+    names = list(attack_cfg["eval"]) + [n for n in attack_cfg.get("extra_eval", []) if n not in attack_cfg["eval"]]
+    attacks = build_attacks(names, attack_cfg["params"]).to(device)
+    result = evaluate_attackwise(model, build_val_loader(cfg), attacks, device, seed=seed,
+                                 primary=attack_cfg["train"])
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
