@@ -73,6 +73,17 @@ python scripts/fgas_update.py --eval-json results/baseline_eval.json --out resul
 # Experiment D (optional): FGAS continuation vs. a matched uniform continuation
 python scripts/train.py --config configs/fgas.yaml
 python scripts/train.py --config configs/baseline_continue.yaml
+
+# Hardened benchmark data: COCO val2017 (4500 train / 500 val, short side 256, PNG) for
+# training; DIV2K valid HR (data.test) is the held-out test set
+python scripts/download_coco.py --config configs/hard_base.yaml   # 5000 images -> data/COCO/val2017
+python scripts/prepare_coco.py --config configs/hard_base.yaml    # -> data/coco_prepared
+python scripts/validate_coco.py --config configs/hard_base.yaml   # manifest check + results/coco_samples/
+python scripts/evaluate.py --checkpoint runs/hard_uniform_s42/best.pt --split test --out results/hard_test.json
+
+# Severity sweep on the DIV2K test set (attacks.sweep) and its figure
+python scripts/sweep.py --checkpoint runs/hard_uniform_s42/best.pt --out runs/hard_uniform_s42/sweep.csv
+python scripts/sweep.py --plot runs/hard_*_s*/sweep.csv --out results/checkin3/figures/severity_sweep.png
 ```
 
 Any config value can be overridden with `--set`, for example `--set train.epochs=5 data.synthetic=true experiment.name=debug`. Setting `data.synthetic=true` uses random smooth images, which makes for a quick smoke test without downloading anything.
@@ -131,7 +142,8 @@ Figures (`python scripts/report_figures.py`, plus `scripts/figure1.py` for Figur
 ```
 configs/      baseline.yaml, fgas.yaml, baseline_continue.yaml
 src/wm/       config, data, messages, models, attacks, metrics, evaluate, fgas, trainer
-scripts/      download_div2k, prepare_div2k, validate_div2k, train, evaluate, fgas_update, figure1, report_figures
+scripts/      download_div2k, prepare_div2k, validate_div2k, download_coco, prepare_coco, validate_coco,
+              train, evaluate, sweep, fgas_update, figure1, report_figures, aggregate_seeds
 notebooks/    checkin2_colab.ipynb (canonical reproducible run)
 tests/        pytest suite (shapes, gradients, attacks, metrics, FGAS, training loop)
 results/      Colab T4 results (JSON/CSV), baseline checkpoint, figures/
