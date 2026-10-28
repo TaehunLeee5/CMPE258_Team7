@@ -12,3 +12,5 @@ runs/
 
 # Internal planning notes (not part of the submission)
 implementation.md
+implementation_checkin*.md
+*.docx

@@ -1,13 +1,19 @@
-"""DIV2K loading and 128x128 crop preprocessing.
+"""DIV2K / COCO loading and 128x128 crop preprocessing.
 
-`scripts/prepare_div2k.py` downscales a fixed subset of DIV2K once (short side =
-`data.prepare_short_side`) into `data.prepared_root/{train,val}`. Those prepared
-images are small enough to keep in RAM as uint8 tensors, so crops are cheap and
-no worker processes are needed.
+`scripts/prepare_div2k.py` (or `scripts/prepare_coco.py` with `data.dataset: coco`)
+downscales a fixed subset once (short side = `data.prepare_short_side`) into
+`<prepared root>/{train,val}`, where the prepared root is `data.prepared_root`
+for DIV2K and `data.coco_prepared_root` for COCO. Those prepared images are
+small enough to keep in RAM as uint8 tensors, so crops are cheap and no worker
+processes are needed.
 
 Training samples are random crops (+ horizontal flip); validation samples are
 fixed crops whose positions are drawn once from the experiment seed, so every
 evaluation sees exactly the same pixels.
+
+The optional held-out test set (`data.test`, prepared DIV2K) uses fixed crops
+drawn from `data.test.seed` instead, so every training seed is tested on the
+same pixels.
 """
 
 import json
@@ -41,12 +47,26 @@ def load_images(directory, max_images=None):
     return [load_image(p) for p in paths]
 
 
+def dataset_name(data_cfg):
+    name = data_cfg.get("dataset", "div2k")
+    if name not in ("div2k", "coco"):
+        raise ValueError(f"data.dataset must be 'div2k' or 'coco', got {name!r}")
+    return name
+
+
+def active_data_cfg(data_cfg):
+    """`data_cfg` with `prepared_root` pointing at the configured dataset's prepared cache."""
+    if dataset_name(data_cfg) == "coco":
+        return {**data_cfg, "prepared_root": data_cfg["coco_prepared_root"]}
+    return data_cfg
+
+
 def validate_prepared_manifest(data_cfg):
-    """Validate cached DIV2K files against the preprocessing manifest and config."""
+    """Validate cached files (DIV2K or COCO) against the preprocessing manifest and config."""
     root = Path(data_cfg["prepared_root"])
     manifest_path = root / "manifest.json"
     if not manifest_path.is_file():
-        raise FileNotFoundError(f"Prepared DIV2K manifest not found at {manifest_path}")
+        raise FileNotFoundError(f"Prepared dataset manifest not found at {manifest_path}")
     with manifest_path.open(encoding="utf-8") as file:
         manifest = json.load(file)
 
@@ -165,11 +185,12 @@ def load_split_images(data_cfg, split, seed):
     if data_cfg.get("synthetic", False):
         side = max(data_cfg["image_size"] * 2, 64)
         return synthetic_images(count, side, side, seed if split == "train" else seed + 1)
-    directory = Path(data_cfg["prepared_root"]) / split
+    name = dataset_name(data_cfg)
+    directory = Path(active_data_cfg(data_cfg)["prepared_root"]) / split
     if not directory.is_dir():
         raise FileNotFoundError(
-            f"Prepared DIV2K split not found at {directory}. Run scripts/download_div2k.py and "
-            "scripts/prepare_div2k.py first (or set data.synthetic=true for a smoke test)."
+            f"Prepared {name} split not found at {directory}. Run scripts/download_{name}.py and "
+            f"scripts/prepare_{name}.py first (or set data.synthetic=true for a smoke test)."
         )
     return load_images(directory, count)
 
@@ -186,6 +207,29 @@ def build_val_dataset(cfg):
     return FixedCropDataset(images, data_cfg["image_size"], data_cfg["val_crops_per_image"], seed)
 
 
+def build_test_dataset(cfg):
+    """Fixed crops of the held-out test set (`data.test`); crops come from `data.test.seed`."""
+    data_cfg = cfg["data"]
+    test_cfg = data_cfg.get("test")
+    if not test_cfg:
+        raise ValueError("No held-out test set configured (data.test)")
+    seed, count = test_cfg.get("seed", 0), test_cfg["num_images"]
+    if data_cfg.get("synthetic", False):
+        side = max(data_cfg["image_size"] * 2, 64)
+        images = synthetic_images(count, side, side, seed + 2)
+    else:
+        directory = Path(test_cfg["prepared_root"]) / test_cfg["split"]
+        if not directory.is_dir():
+            raise FileNotFoundError(
+                f"Prepared test split not found at {directory}. Run scripts/download_div2k.py --splits valid "
+                "and scripts/prepare_div2k.py --splits val first."
+            )
+        images = load_images(directory, count)
+        if len(images) != count:
+            raise ValueError(f"Test set needs {count} images in {directory}, found {len(images)}")
+    return FixedCropDataset(images, data_cfg["image_size"], test_cfg["crops_per_image"], seed)
+
+
 def build_datasets(cfg):
     return build_train_dataset(cfg), build_val_dataset(cfg)
 
@@ -197,6 +241,10 @@ def _loader(dataset, cfg, drop_last):
 
 def build_val_loader(cfg):
     return _loader(build_val_dataset(cfg), cfg, drop_last=False)
+
+
+def build_test_loader(cfg):
+    return _loader(build_test_dataset(cfg), cfg, drop_last=False)
 
 
 def build_loaders(cfg):

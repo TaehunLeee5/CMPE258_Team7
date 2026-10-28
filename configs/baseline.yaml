@@ -9,7 +9,8 @@ experiment:
   device: auto              # auto | cuda | cpu
 
 data:
-  raw_root: data/DIV2K                # where download_div2k.py extracts the zips
+  dataset: div2k                      # div2k | coco (hard_base.yaml)
+  raw_root: data/DIV2K               # where download_div2k.py extracts the zips
   prepared_root: data/div2k_prepared  # where prepare_div2k.py writes the cached subset
   num_train_images: 600               # first N of the 800 DIV2K train HR images
   num_val_images: 100                 # official DIV2K validation HR images
