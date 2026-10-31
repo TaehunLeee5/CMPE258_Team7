@@ -1,0 +1,35 @@
+{
+  "epoch": 9,
+  "attacks": {
+    "clean": {
+      "bit_acc": 1.0,
+      "msg_acc": 1.0
+    },
+    "noise": {
+      "bit_acc": 0.998359375,
+      "msg_acc": 0.9475
+    },
+    "blur": {
+      "bit_acc": 0.999296875,
+      "msg_acc": 0.98
+    },
+    "brightness": {
+      "bit_acc": 0.995625,
+      "msg_acc": 0.9625
+    },
+    "resize": {
+      "bit_acc": 0.99859375,
+      "msg_acc": 0.96
+    }
+  },
+  "image_quality": {
+    "psnr": 33.28769424438477,
+    "ssim": 0.9261419248580932
+  },
+  "worst_case": {
+    "attack": "brightness",
+    "bit_acc": 0.995625
+  },
+  "mean_attacked_bit_acc": 0.99796875,
+  "num_samples": 400
+}

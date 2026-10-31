@@ -1,0 +1,167 @@
+[
+  {
+    "step": 0,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.998671875,
+        "failure": 0.0013281250000000133,
+        "old_prob": 0.25,
+        "new_prob": 0.2324675324675345
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.9996875,
+        "failure": 0.00031250000000004885,
+        "old_prob": 0.25,
+        "new_prob": 0.1311688311688362
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.996171875,
+        "failure": 0.00382812499999996,
+        "old_prob": 0.25,
+        "new_prob": 0.4818181818181798
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.999453125,
+        "failure": 0.0005468749999999467,
+        "old_prob": 0.25,
+        "new_prob": 0.15454545454544952
+      }
+    ]
+  },
+  {
+    "step": 2,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.9971875,
+        "failure": 0.0028124999999999956,
+        "old_prob": 0.2324675324675345,
+        "new_prob": 0.22067039106145286
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.998359375,
+        "failure": 0.0016406249999999512,
+        "old_prob": 0.1311688311688362,
+        "new_prob": 0.1703910614525122
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.993984375,
+        "failure": 0.006015624999999969,
+        "old_prob": 0.4818181818181798,
+        "new_prob": 0.35810055865921775
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.996484375,
+        "failure": 0.003515625000000022,
+        "old_prob": 0.15454545454544952,
+        "new_prob": 0.2508379888268173
+      }
+    ]
+  },
+  {
+    "step": 4,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.9978125,
+        "failure": 0.002187500000000009,
+        "old_prob": 0.22067039106145286,
+        "new_prob": 0.22444444444444547
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.998515625,
+        "failure": 0.0014843749999999822,
+        "old_prob": 0.1703910614525122,
+        "new_prob": 0.1844444444444438
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.99765625,
+        "failure": 0.002343749999999978,
+        "old_prob": 0.35810055865921775,
+        "new_prob": 0.23333333333333262
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.99546875,
+        "failure": 0.004531249999999987,
+        "old_prob": 0.2508379888268173,
+        "new_prob": 0.3577777777777781
+      }
+    ]
+  },
+  {
+    "step": 6,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.99609375,
+        "failure": 0.00390625,
+        "old_prob": 0.22444444444444547,
+        "new_prob": 0.4
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.99984375,
+        "failure": 0.00015624999999996891,
+        "old_prob": 0.1844444444444438,
+        "new_prob": 0.11199999999999762
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.99671875,
+        "failure": 0.0032812500000000133,
+        "old_prob": 0.23333333333333262,
+        "new_prob": 0.352000000000001
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.99953125,
+        "failure": 0.00046875000000001776,
+        "old_prob": 0.3577777777777781,
+        "new_prob": 0.13600000000000137
+      }
+    ]
+  },
+  {
+    "step": 8,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.998203125,
+        "failure": 0.001796875000000031,
+        "old_prob": 0.4,
+        "new_prob": 0.22212389380531233
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.998984375,
+        "failure": 0.0010156249999999645,
+        "old_prob": 0.11199999999999762,
+        "new_prob": 0.16902654867256423
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.998671875,
+        "failure": 0.0013281250000000133,
+        "old_prob": 0.352000000000001,
+        "new_prob": 0.190265486725665
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.9953125,
+        "failure": 0.004687499999999956,
+        "old_prob": 0.13600000000000137,
+        "new_prob": 0.41858407079645843
+      }
+    ]
+  }
+]
