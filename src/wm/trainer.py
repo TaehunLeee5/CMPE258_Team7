@@ -13,6 +13,11 @@ imperceptibility is tightened afterwards. Only epochs at the final weight are
 eligible for best.pt.
 
 One attack is drawn per batch by `AttackSampler` (uniform for the baseline).
+With `attacks.warmup` (a subset of `attacks.train`), batches are drawn
+uniformly from that easier subset until the image-loss ramp starts, i.e. until
+the message has been learned: with all hardened attacks from the first batch,
+whether training ever leaves chance accuracy depends on luck. Both methods get
+the same warm-up, and FGAS only starts adapting after it.
 After every epoch the model is evaluated separately under every attack in
 `attacks.eval`. With `fgas.enabled`, every `fgas.update_interval` epochs (and
 optionally once before training, `fgas.update_at_start`) those validation
@@ -118,6 +123,14 @@ class Trainer:
                                            trainable_only=True).to(self.device)
         self.eval_attacks = build_attacks(attack_cfg["eval"], attack_cfg["params"]).to(self.device)
         self.sampler = AttackSampler(attack_cfg["train"], attack_cfg.get("initial_probs"), seed=self.seed)
+        warmup = attack_cfg.get("warmup")
+        if warmup and train_cfg.get("image_loss_warmup_epochs", 0) > 0:
+            unknown = set(warmup) - set(attack_cfg["train"])
+            if unknown:
+                raise ValueError(f"attacks.warmup {sorted(unknown)} must be a subset of attacks.train")
+            self.warmup_sampler = AttackSampler(warmup, seed=self.seed)
+        else:
+            self.warmup_sampler = None
         self.fgas = build_fgas(cfg, self.sampler.probs) if cfg["fgas"]["enabled"] else None
 
         self.start_epoch = 1
@@ -153,18 +166,25 @@ class Trainer:
         torch.save(state, path)
 
     # --------------------------------------------------------------- training
+    def in_attack_warmup(self, epoch):
+        return self.warmup_sampler is not None and (self.ramp_start is None or epoch < self.ramp_start)
+
+    def active_sampler(self, epoch):
+        return self.warmup_sampler if self.in_attack_warmup(epoch) else self.sampler
+
     def train_epoch(self, epoch):
         self.model.train()
         train_cfg, length = self.cfg["train"], self.cfg["message"]["length"]
         image_weight = image_loss_weight(train_cfg, epoch, self.ramp_start)
-        self.sampler.reset_counts()
+        sampler = self.active_sampler(epoch)
+        sampler.reset_counts()
         totals = {"loss": 0.0, "image_loss": 0.0, "message_loss": 0.0, "bit_acc": 0.0, "psnr": 0.0}
         steps = 0
         bar = tqdm(self.train_loader, desc=f"epoch {epoch}", leave=False)
         for cover in bar:
             cover = cover.to(self.device, non_blocking=True)
             message = random_messages(cover.shape[0], length, device=self.device)
-            attack_name = self.sampler.sample()
+            attack_name = sampler.sample()
             watermarked, _, logits = self.model(cover, message, self.train_attacks[attack_name])
             loss, image_loss, message_loss = compute_losses(cover, watermarked, logits, message,
                                                             image_weight, train_cfg["message_loss_weight"])
@@ -221,16 +241,18 @@ class Trainer:
             self.fgas_update(self.validate(), step=0)
         for epoch in range(self.start_epoch, epochs + 1):
             start = time.time()
-            probs_used = dict(self.sampler.probs)
+            sampler = self.active_sampler(epoch)
+            probs_used = {n: sampler.probs.get(n, 0.0) for n in self.sampler.names}
             train_stats = self.train_epoch(epoch)
+            counts = {n: sampler.counts.get(n, 0) for n in self.sampler.names}
             result = self.validate()
 
             row = {"epoch": epoch, **train_stats, **flatten_eval(result)}
             row.update({f"prob_{n}": p for n, p in probs_used.items()})
-            row.update({f"count_{n}": c for n, c in self.sampler.counts.items()})
+            row.update({f"count_{n}": c for n, c in counts.items()})
             row["epoch_time_s"] = time.time() - start
             self._log(row, {"epoch": epoch, "train": train_stats, "val": result,
-                            "sampler_probs": probs_used, "sampler_counts": dict(self.sampler.counts)})
+                            "sampler_probs": probs_used, "sampler_counts": counts})
 
             # Warm-up epochs trade image quality for accuracy, so they are not eligible as "best".
             train_cfg = self.cfg["train"]
@@ -255,7 +277,8 @@ class Trainer:
                   f"bit_acc: {accs} ({row['epoch_time_s']:.0f}s)", flush=True)
 
             interval = self.cfg["fgas"].get("update_interval", 1)
-            if self.fgas is not None and epoch % interval == 0 and epoch < epochs:
+            if (self.fgas is not None and epoch % interval == 0 and epoch < epochs
+                    and not self.in_attack_warmup(epoch + 1)):
                 self.fgas_update(result, step=epoch)
         self.evaluate_best_on_test()
         return result

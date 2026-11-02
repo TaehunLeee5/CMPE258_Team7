@@ -92,3 +92,25 @@ def test_no_test_evaluation_without_test_block(small_cfg, tmp_path):
     apply_override(small_cfg, "train.epochs=1")
     Trainer(small_cfg).fit()
     assert not (tmp_path / small_cfg["experiment"]["name"] / "best_test_eval.json").exists()
+
+
+def test_attack_warmup_uses_subset_until_ramp_then_all_attacks(small_cfg, tmp_path):
+    apply_override(small_cfg, f"experiment.output_dir={tmp_path.as_posix()}")
+    apply_override(small_cfg, "train.epochs=3")
+    apply_override(small_cfg, "attacks.warmup=[noise, blur]")
+    apply_override(small_cfg, "train.image_loss_ramp_trigger_acc=2.0")  # never by accuracy...
+    apply_override(small_cfg, "train.image_loss_ramp_latest_epoch=2")   # ...forced: ramp starts at epoch 2
+    Trainer(small_cfg).fit()
+    with open(tmp_path / small_cfg["experiment"]["name"] / "metrics.csv", newline="") as f:
+        rows = list(csv.DictReader(f))
+    first, later = rows[0], rows[1:]
+    assert int(first["count_brightness"]) == 0 and int(first["count_resize"]) == 0
+    assert int(first["count_noise"]) + int(first["count_blur"]) > 0
+    assert float(first["prob_brightness"]) == 0.0
+    assert all(abs(float(r["prob_brightness"]) - 0.25) < 1e-6 for r in later)
+
+
+def test_attack_warmup_must_be_subset_of_training_attacks(small_cfg):
+    apply_override(small_cfg, "attacks.warmup=[noise, jpeg]")
+    with pytest.raises(ValueError):
+        Trainer(small_cfg)

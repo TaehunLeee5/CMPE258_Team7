@@ -32,6 +32,9 @@ train:
 
 attacks:
   train: [noise, blur, brightness, resize, jpeg, crop, occlusion]
+  # Until the message is learned (image-loss ramp start), sample only these: with
+  # all 7 attacks from the start, training stayed at chance in some runs.
+  warmup: [noise, blur, brightness, resize]
   eval: [clean, noise, blur, brightness, resize, jpeg, crop, occlusion]
   extra_eval: [jpeg_real, combo]      # evaluation only (no gradient)
   params:
