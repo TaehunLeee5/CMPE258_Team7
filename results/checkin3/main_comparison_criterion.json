@@ -1,0 +1,15 @@
+{
+  "uniform": "hard_uniform",
+  "fgas": "hard_fgas",
+  "delta_worst_pp": 7.359375000000002,
+  "delta_psnr_db": -0.34525848388671676,
+  "delta_mean_attacked_pp": 0.8046874999999898,
+  "fgas_clean_bit_acc": 0.9996875,
+  "checks": {
+    "worst_case_gain_ge_2pp": true,
+    "psnr_within_0.5db": true,
+    "mean_attacked_drop_le_0.5pp": true,
+    "clean_ge_98": true
+  },
+  "met": true
+}

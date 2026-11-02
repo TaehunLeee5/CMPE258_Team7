@@ -8,7 +8,7 @@ __pycache__/
 
 # Large / machine-local artifacts
 data/
-runs/
+/runs/
 
 # Internal planning notes (not part of the submission)
 implementation.md

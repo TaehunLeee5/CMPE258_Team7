@@ -18,7 +18,7 @@ Figures (hardened benchmark, from --hard-dir, default results/checkin3; skipped 
   psnr_vs_acc          worst-case and mean attacked accuracy vs PSNR, one point per run
                        (runs/*/best_test_eval.json)
   new_attack_examples  JPEG, crop, occlusion, real JPEG and combo on a watermarked crop
-                       (runs/hard_uniform_s42/best.pt and the prepared validation data)
+                       (runs/hard_uniform_s42/best.pt and the prepared DIV2K test images)
 """
 
 import argparse
@@ -260,9 +260,11 @@ def method_bars(out_dir):
         rows = [stats[(method, f"{a}_bit_acc")] for a in names]
         x = [i + (k - (len(methods) - 1) / 2) * w for i in range(len(names))]
         psnr = stats[(method, "psnr")]
-        ax.bar(x, [100 * float(r["mean"]) for r in rows], w, yerr=[100 * float(r["std"]) for r in rows],
-               capsize=3, color=color, label=f"{label} (n={rows[0]['n']} seeds, "
-                                             f"PSNR {float(psnr['mean']):.2f} ± {float(psnr['std']):.2f} dB)")
+        n = int(rows[0]["n"])
+        spread = f" ± {float(psnr['std']):.2f}" if n > 1 else ""  # no spread to show for a single seed
+        ax.bar(x, [100 * float(r["mean"]) for r in rows], w,
+               yerr=[100 * float(r["std"]) for r in rows] if n > 1 else None, capsize=3, color=color,
+               label=f"{label} (n={n} seed{'s' if n > 1 else ''}, PSNR {float(psnr['mean']):.2f}{spread} dB)")
     ax.set_xticks(range(len(names)), names)
     ax.axvline(len([a for a in names if a not in ("jpeg_real", "combo")]) - 0.5, color="#999999", ls=":", lw=1)
     ax.set_ylabel("Bit accuracy (%)")
@@ -330,7 +332,7 @@ def new_attack_examples(out_dir, run="hard_uniform_s42", index=10):
 
     from wm.attacks import build_attacks
     from wm.config import set_seed
-    from wm.data import build_val_dataset
+    from wm.data import build_test_loader
     from wm.metrics import psnr
     from wm.models import build_model
 
@@ -349,7 +351,7 @@ def new_attack_examples(out_dir, run="hard_uniform_s42", index=10):
     attacks = build_attacks(names, params)
     labels = {"jpeg": "Diff. JPEG Q50", "crop": "Crop 60% area", "occlusion": "Occlusion 35%",
               "jpeg_real": f"Real JPEG Q{params['jpeg_real']['quality']}", "combo": "Resize 0.5 + real JPEG"}
-    cover = build_val_dataset(cfg)[index].unsqueeze(0)
+    cover = build_test_loader(cfg).dataset[index].unsqueeze(0)  # held-out DIV2K crop
     message = torch.randint(0, 2, (1, cfg["message"]["length"]), generator=torch.Generator().manual_seed(7)).float()
     with torch.no_grad():
         wm = model.encoder(cover, message)
