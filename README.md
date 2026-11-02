@@ -79,7 +79,15 @@ python scripts/train.py --config configs/baseline_continue.yaml
 python scripts/download_coco.py --config configs/hard_base.yaml   # 5000 images -> data/COCO/val2017
 python scripts/prepare_coco.py --config configs/hard_base.yaml    # -> data/coco_prepared
 python scripts/validate_coco.py --config configs/hard_base.yaml   # manifest check + results/coco_samples/
+
+# Hardened comparison: uniform vs FGAS from scratch (60 epochs each); after training,
+# best.pt is scored on the DIV2K test set -> runs/<name>/best_test_eval.json
+python scripts/train.py --config configs/hard_uniform.yaml --set experiment.name=hard_uniform_s42
+python scripts/train.py --config configs/hard_fgas.yaml --set experiment.name=hard_fgas_s42
 python scripts/evaluate.py --checkpoint runs/hard_uniform_s42/best.pt --split test --out results/hard_test.json
+
+# Mean +- std over seeds and the pre-registered criterion check
+python scripts/aggregate_seeds.py runs/hard_uniform_s* runs/hard_fgas_s*     --out results/checkin3/main_comparison --criterion hard_uniform hard_fgas
 
 # Severity sweep on the DIV2K test set (attacks.sweep) and its figure
 python scripts/sweep.py --checkpoint runs/hard_uniform_s42/best.pt --out runs/hard_uniform_s42/sweep.csv
@@ -137,16 +145,65 @@ Figures (`python scripts/report_figures.py`, plus `scripts/figure1.py` for Figur
 ![attack examples](results/figures/attack_examples.png)
 ![Figure 1](results/figure1.png)
 
+## Hardened benchmark: uniform vs FGAS (Colab T4)
+
+The baseline above is saturated: every attack is at 99.8% or higher, so there are no failures for FGAS to adapt to. Experiment D confirms this. Continuing the baseline for 10 epochs with FGAS or with uniform sampling (3 seeds each, `results/checkin3/exp_d.md`) gives the same worst case (brightness, 99.65 ± 0.10% vs. 99.68 ± 0.13%) and the same mean attacked accuracy (99.85%).
+
+We therefore made the task harder ([configs/hard_base.yaml](configs/hard_base.yaml)):
+
+- **Data.** Training and model selection use COCO val2017 (4500 train / 500 validation images, short side 256, PNG). DIV2K valid HR is a **held-out test set** (100 images × 4 fixed crops) that is never used for training, checkpoint selection or FGAS.
+- **Attacks.** Seven training attacks: noise σ=0.1, blur 9×9 σ=2, brightness ×U[0.3, 1.7], resize ×0.25, differentiable JPEG Q∈[50, 90], crop keeping 50-80% of the area (resized back), and occlusion of 10-25% of the area. Real JPEG Q50 and resize 0.5 + real JPEG are evaluated but never trained on.
+- **Imperceptibility.** The final image-loss weight is 200, up from 20.
+- **Warm-up.** Batches use only noise/blur/brightness/resize until the message is learned, then all seven attacks. Both methods get the same warm-up.
+- **FGAS settings.** Update every 2 epochs, floor 0.05, power 1, momentum 0.5.
+- **Comparison.** [configs/hard_uniform.yaml](configs/hard_uniform.yaml) and [configs/hard_fgas.yaml](configs/hard_fgas.yaml) differ only in the `fgas` block (checked by `tests/test_configs.py`).
+
+Calibration findings from development runs:
+- With 25-50% occlusion during training, bit accuracy stayed at chance and the message was never learned.
+- With all seven attacks from the first batch, whether training ever left chance accuracy varied between otherwise identical runs. The attack warm-up fixed both problems.
+
+**Results on the DIV2K test set** (seed 42, Tesla T4, `results/checkin3/`). The pre-registered criterion was worst-case bit accuracy +2 pp or more, PSNR within 0.5 dB, mean attacked accuracy no more than 0.5 pp lower, and clean accuracy ≥ 98%.
+
+| | Uniform | FGAS |
+|---|---|---|
+| PSNR / SSIM | 36.04 dB / 0.975 | 35.70 dB / 0.979 |
+| Clean bit accuracy | 99.97% | 99.97% |
+| **Worst attack (crop) bit accuracy** | **86.30%** | **93.66%** (+7.4 pp) |
+| Crop full-message accuracy | 14.25% | 44.75% |
+| Mean over the 7 training attacks | 97.49% | 98.29% |
+| Noise σ=0.1 | 98.92% | 97.87% |
+| Real JPEG Q50 / resize 0.5 + real JPEG | 99.45% / 99.34% | 99.17% / 99.02% |
+
+On this seed FGAS meets the criterion (`main_comparison_criterion.json`). This is a **single seed**: seeds 43 and 44 are the next runs, and the result should not be read as established until they are in.
+
+FGAS moved its sampling toward crop: crop's probability was 29-38% after warm-up, against 1/7 ≈ 14% under uniform sampling. It took batches mainly from blur, resize and JPEG, which were already near 100%.
+
+The severity sweep shows two things:
+- The crop gain holds beyond the training strength. Keeping 50% of the area gives 80.8% vs. 70.0%, and keeping 35% gives 62.9% vs. 55.9%.
+- There is a cost on strong noise: 82.9% vs. 87.5% at σ=0.2, which is beyond the training strength.
+
+Neither method reached the 38 dB PSNR target (about 36 dB at weight 200).
+
+| | |
+|---|---|
+| ![uniform vs FGAS](results/checkin3/figures/method_bars.png) | ![FGAS over time](results/checkin3/figures/fgas_over_time.png) |
+
+![severity sweep](results/checkin3/figures/severity_sweep.png)
+![new attacks](results/checkin3/figures/new_attack_examples.png)
+
+The canonical run for this section is [notebooks/checkin3_colab.ipynb](notebooks/checkin3_colab.ipynb). Set `MY_JOBS` (e.g. `['hard_uniform_s42', 'hard_fgas_s42']`) and run all. Runs are written to Drive and resume after a disconnect.
+
 ## Repository layout
 
 ```
-configs/      baseline.yaml, fgas.yaml, baseline_continue.yaml
+configs/      baseline.yaml, fgas.yaml, baseline_continue.yaml (DIV2K);
+              hard_base.yaml, hard_uniform.yaml, hard_fgas.yaml, hard_fgas_p2.yaml, calib_*.yaml (hardened)
 src/wm/       config, data, messages, models, attacks, metrics, evaluate, fgas, trainer
 scripts/      download_div2k, prepare_div2k, validate_div2k, download_coco, prepare_coco, validate_coco,
               train, evaluate, sweep, fgas_update, figure1, report_figures, aggregate_seeds
-notebooks/    checkin2_colab.ipynb (canonical reproducible run)
+notebooks/    checkin2_colab.ipynb (DIV2K baseline), checkin3_colab.ipynb (hardened benchmark runs)
 tests/        pytest suite (shapes, gradients, attacks, metrics, FGAS, training loop)
-results/      Colab T4 results (JSON/CSV), baseline checkpoint, figures/
+results/      Colab T4 results (JSON/CSV), baseline checkpoint, figures/; checkin3/ (Experiment D, hardened runs)
 ```
 
 ## Team ownership and next steps
