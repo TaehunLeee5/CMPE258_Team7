@@ -1,6 +1,11 @@
-"""Render original, watermarked, and amplified-difference validation crops.
+"""Render original, watermarked, and amplified-difference crops.
 
     python scripts/figure1.py --checkpoint results/baseline_uniform/best.pt
+    python scripts/figure1.py --checkpoint results/checkin3/runs/hard_fgas_s42/best.pt         --split test --out results/final/main/figures/figure1.png
+
+--split val uses the run's validation crops; --split test uses the held-out test
+crops (data.test, DIV2K for the hardened runs), so the figure needs no COCO data.
+Each watermarked panel is titled with its PSNR.
 """
 
 import argparse
@@ -13,7 +18,8 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wm.config import apply_override, resolve_device, set_seed  # noqa: E402
-from wm.data import build_val_dataset, validate_prepared_manifest  # noqa: E402
+from wm.data import build_test_dataset, build_val_dataset, validate_prepared_manifest  # noqa: E402
+from wm.metrics import psnr  # noqa: E402
 from wm.models import build_model  # noqa: E402
 
 
@@ -22,6 +28,7 @@ def main():
     parser.add_argument("--checkpoint", default="results/baseline_uniform/best.pt")
     parser.add_argument("--out", default="results/figure1.png")
     parser.add_argument("--indices", nargs="+", type=int, default=[0, 100, 200])
+    parser.add_argument("--split", choices=("val", "test"), default="val")
     parser.add_argument("--set", nargs="*", default=[], metavar="KEY=VALUE")
     args = parser.parse_args()
 
@@ -32,10 +39,15 @@ def main():
     for item in args.set:
         apply_override(cfg, item)
     if cfg["data"].get("synthetic", False):
-        parser.error("Figure 1 requires real DIV2K validation crops (data.synthetic=false)")
+        parser.error("Figure 1 requires real image crops (data.synthetic=false)")
     set_seed(cfg["experiment"]["seed"])
-    validate_prepared_manifest(cfg["data"])
-    dataset = build_val_dataset(cfg)
+    if args.split == "test":
+        if not cfg["data"].get("test"):
+            parser.error("--split test needs data.test in the checkpoint config")
+        dataset = build_test_dataset(cfg)
+    else:
+        validate_prepared_manifest(cfg["data"])
+        dataset = build_val_dataset(cfg)
     if any(index < 0 or index >= len(dataset) for index in args.indices):
         parser.error(f"--indices must be in [0, {len(dataset) - 1}]")
 
@@ -53,9 +65,10 @@ def main():
             message = torch.randint(0, 2, (1, cfg["message"]["length"]), generator=generator).to(device).float()
             watermarked = model.encoder(cover, message)
             difference = (watermarked - cover).abs().mul(10).clamp(0, 1)
-            for axis, image, column in zip(axes[row], (cover, watermarked, difference), columns):
+            titles = (columns[0], f"{columns[1]}, PSNR {psnr(watermarked, cover):.1f} dB", columns[2])
+            for axis, image, title in zip(axes[row], (cover, watermarked, difference), titles):
                 axis.imshow(image[0].cpu().permute(1, 2, 0).numpy())
-                axis.set_title(f"Crop {index}: {column}")
+                axis.set_title(f"Crop {index}: {title}")
                 axis.set_axis_off()
 
     figure.tight_layout()
@@ -63,7 +76,7 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     figure.savefig(out, dpi=200, bbox_inches="tight")
     plt.close(figure)
-    print(f"Saved Figure 1 with {len(args.indices)} validation crops to {out}")
+    print(f"Saved Figure 1 with {len(args.indices)} {args.split} crops to {out}")
 
 
 if __name__ == "__main__":
