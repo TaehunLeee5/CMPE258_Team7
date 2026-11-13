@@ -5,8 +5,8 @@ every attack, so all attacks are compared on identical watermarked images.
 Messages and attack randomness are seeded, and the global RNG state is restored
 afterwards so evaluating in the middle of training does not change training.
 
-Worst-case and mean attacked accuracy are taken over the `primary` attacks (the
-training attacks) when given, so evaluation-only attacks such as real JPEG are
+Worst-case and mean attacked accuracy (bit and full-message) are taken over the
+`primary` attacks (the training attacks) when given, so evaluation-only attacks such as real JPEG are
 reported but never drive checkpoint selection or FGAS.
 """
 
@@ -52,5 +52,6 @@ def evaluate_attackwise(model, loader, attacks, device, seed=0, primary=None):
         "image_quality": {k: v / total for k, v in quality.items()},
         "worst_case": {"attack": worst, "bit_acc": attacked[worst]["bit_acc"]},
         "mean_attacked_bit_acc": sum(v["bit_acc"] for v in attacked.values()) / len(attacked),
+        "mean_attacked_msg_acc": sum(v["msg_acc"] for v in attacked.values()) / len(attacked),
         "num_samples": total,
     }

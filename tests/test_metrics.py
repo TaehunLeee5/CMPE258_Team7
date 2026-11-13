@@ -82,3 +82,5 @@ def test_worst_and_mean_use_only_primary_attacks(small_cfg):
     assert primary["worst_case"]["attack"] in ("noise", "blur")
     expected_mean = (primary["attacks"]["noise"]["bit_acc"] + primary["attacks"]["blur"]["bit_acc"]) / 2
     assert primary["mean_attacked_bit_acc"] == pytest.approx(expected_mean)
+    expected_msg = (primary["attacks"]["noise"]["msg_acc"] + primary["attacks"]["blur"]["msg_acc"]) / 2
+    assert primary["mean_attacked_msg_acc"] == pytest.approx(expected_msg)
