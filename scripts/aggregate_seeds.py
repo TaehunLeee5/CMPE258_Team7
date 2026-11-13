@@ -13,7 +13,14 @@ best_test_eval.json = DIV2K test set). Runs are grouped by name with the
 --criterion UNIFORM FGAS checks the pre-registered comparison on the group means:
 worst-case attack bit accuracy at least +2 pp, PSNR within 0.5 dB, mean attacked
 bit accuracy not lower by more than 0.5 pp, FGAS clean bit accuracy >= 98%.
-The result goes to <out>_criterion.json.
+It also reports a paired section over the seeds present in both groups: per-seed
+differences (FGAS - uniform) of worst-case bit accuracy, mean attacked bit and
+full-message accuracy and PSNR, their mean ± std, and on how many seeds FGAS has
+the better worst case. The result goes to <out>_criterion.json.
+
+mean_attacked_msg_acc is the full-message accuracy averaged over the training
+attacks. Evaluation JSONs written before it existed are filled in from their
+per-attack results and the run's config.yaml (attacks.train).
 """
 
 import argparse
@@ -23,7 +30,10 @@ import re
 import statistics
 from pathlib import Path
 
-SEED_SUFFIX = re.compile(r"_s\d+$")
+import yaml
+
+SEED_SUFFIX = re.compile(r"_s(\d+)$")
+PAIRED_METRICS = ("worst_bit_acc", "mean_attacked_bit_acc", "mean_attacked_msg_acc", "psnr")
 
 
 def load_runs(run_dirs, filename):
@@ -34,8 +44,24 @@ def load_runs(run_dirs, filename):
             print(f"skipping {run_dir}: no {filename}")
             continue
         with open(path, encoding="utf-8") as f:
-            runs.append({"name": Path(run_dir).name, **json.load(f)})
+            run = {"name": Path(run_dir).name, **json.load(f)}
+        config = Path(run_dir) / "config.yaml"
+        if config.is_file():
+            with open(config, encoding="utf-8") as f:
+                run["train_attacks"] = ((yaml.safe_load(f) or {}).get("attacks") or {}).get("train")
+        runs.append(run)
     return runs
+
+
+def mean_attacked_msg_acc(run):
+    """Full-message accuracy averaged over the training attacks (as evaluate_attackwise does)."""
+    if "mean_attacked_msg_acc" in run:
+        return run["mean_attacked_msg_acc"]
+    primary = run.get("train_attacks")
+    attacked = [v["msg_acc"] for a, v in run["attacks"].items()
+                if a != "clean" and (primary is None or a in primary)]
+    attacked = attacked or [v["msg_acc"] for v in run["attacks"].values()]
+    return sum(attacked) / len(attacked)
 
 
 def run_metrics(run):
@@ -48,6 +74,7 @@ def run_metrics(run):
     metrics["ssim"] = run["image_quality"]["ssim"]
     metrics["worst_bit_acc"] = run["worst_case"]["bit_acc"]
     metrics["mean_attacked_bit_acc"] = run["mean_attacked_bit_acc"]
+    metrics["mean_attacked_msg_acc"] = mean_attacked_msg_acc(run)
     return metrics
 
 
@@ -129,6 +156,7 @@ def check_criterion(summaries, uniform, fgas):
     delta_worst_pp = 100 * (f["worst_bit_acc"][0] - u["worst_bit_acc"][0])
     delta_psnr = f["psnr"][0] - u["psnr"][0]
     delta_mean_pp = 100 * (f["mean_attacked_bit_acc"][0] - u["mean_attacked_bit_acc"][0])
+    delta_msg_pp = 100 * (f["mean_attacked_msg_acc"][0] - u["mean_attacked_msg_acc"][0])
     clean = f["clean_bit_acc"][0] if "clean_bit_acc" in f else None
     checks = {
         "worst_case_gain_ge_2pp": delta_worst_pp >= 2.0,
@@ -137,8 +165,47 @@ def check_criterion(summaries, uniform, fgas):
         "clean_ge_98": clean is None or clean >= 0.98,
     }
     return {"uniform": uniform, "fgas": fgas, "delta_worst_pp": delta_worst_pp, "delta_psnr_db": delta_psnr,
-            "delta_mean_attacked_pp": delta_mean_pp, "fgas_clean_bit_acc": clean,
+            "delta_mean_attacked_pp": delta_mean_pp, "delta_mean_msg_pp": delta_msg_pp,
+            "fgas_clean_bit_acc": clean,
             "checks": checks, "met": all(checks.values())}
+
+
+def _by_seed(runs):
+    seeded = {}
+    for run in runs:
+        match = SEED_SUFFIX.search(run["name"])
+        if match:
+            seeded[int(match.group(1))] = run_metrics(run)
+    return seeded
+
+
+def paired_deltas(groups, uniform, fgas):
+    """Per-seed FGAS - uniform differences on the seeds both groups have (accuracies in pp, PSNR in dB)."""
+    u, f = _by_seed(groups[uniform]), _by_seed(groups[fgas])
+    seeds = sorted(set(u) & set(f))
+    per_seed = [{"seed": s, **{m: (f[s][m] - u[s][m]) * (1 if m == "psnr" else 100) for m in PAIRED_METRICS}}
+                for s in seeds]
+    summary = {}
+    for m in PAIRED_METRICS:
+        values = [row[m] for row in per_seed]
+        summary[m] = {"mean": statistics.fmean(values) if values else None,
+                      "std": statistics.stdev(values) if len(values) > 1 else 0.0, "n": len(values)}
+    wins = sum(row["worst_bit_acc"] > 0 for row in per_seed)
+    return {"seeds": seeds, "units": "accuracies in pp, psnr in dB; FGAS - uniform",
+            "per_seed": per_seed, "summary": summary,
+            "fgas_better_worst_case": wins, "num_paired_seeds": len(seeds)}
+
+
+def format_paired(paired):
+    lines = ["| seed | " + " | ".join(PAIRED_METRICS) + " |", "|---|" + "---|" * len(PAIRED_METRICS)]
+    for row in paired["per_seed"]:
+        lines.append(f"| {row['seed']} | " + " | ".join(f"{row[m]:+.2f}" for m in PAIRED_METRICS) + " |")
+    if paired["per_seed"]:
+        lines.append("| mean ± std | " + " | ".join(
+            f"{paired['summary'][m]['mean']:+.2f} ± {paired['summary'][m]['std']:.2f}" for m in PAIRED_METRICS) + " |")
+    lines.append(f"FGAS better on worst case in {paired['fgas_better_worst_case']} of "
+                 f"{paired['num_paired_seeds']} seeds (differences FGAS - uniform; pp, PSNR in dB).")
+    return "\n".join(lines)
 
 
 def main():
@@ -164,9 +231,12 @@ def main():
             if missing:
                 raise SystemExit(f"Groups {missing} not found; have {sorted(summaries)}")
             result = check_criterion(summaries, *args.criterion)
+            groups = group_runs(runs)
+            result["paired"] = paired_deltas(groups, *args.criterion)
             with open(f"{out}_criterion.json", "w", encoding="utf-8") as f:
                 json.dump(result, f, indent=2)
-            print(json.dumps(result, indent=2))
+            print(json.dumps({k: v for k, v in result.items() if k != "paired"}, indent=2))
+            print(format_paired(result["paired"]))
     print(out.with_suffix(".md").read_text(encoding="utf-8"))
     print(f"Wrote {out.with_suffix('.csv')} and {out.with_suffix('.md')}")
 
