@@ -50,7 +50,8 @@ def test_ablation_changes_exactly_one_fgas_key(variant):
 
 
 @pytest.mark.parametrize("name", ["hard_base", "hard_uniform", "hard_fgas", "hard_fgas_p2",
-                                  *(f"hard_fgas_{v}" for v in sorted(ABLATIONS)), "calib_w100", "calib_w200", "calib_w400", "calib_w100_strong"])
+                                  *(f"hard_fgas_{v}" for v in sorted(ABLATIONS)),
+                                  "calib_w100", "calib_w200", "calib_w400", "calib_w100_strong"])
 def test_hardened_configs_build(name):
     cfg = load_config(CONFIGS / f"{name}.yaml")
     attacks = cfg["attacks"]
