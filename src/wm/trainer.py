@@ -22,7 +22,11 @@ After every epoch the model is evaluated separately under every attack in
 `attacks.eval`. With `fgas.enabled`, every `fgas.update_interval` epochs (and
 optionally once before training, `fgas.update_at_start`) those validation
 accuracies are turned into a new sampling distribution by FGAS, which the
-sampler uses from the next batch on. Run artifacts in `<output_dir>/<name>/`:
+sampler uses from the next batch on. With `fgas.mode: loss_weight` the sampler
+stays uniform instead, and the same FGAS distribution p re-weights the message
+loss: a batch under attack a gets weight K * p_a (K training attacks), which
+averages 1 over attacks, so the training budget matches the sampling mode.
+Run artifacts in `<output_dir>/<name>/`:
 
     config.yaml    resolved config          run_info.json  environment / git SHA
     metrics.csv    one row per epoch        metrics.jsonl  full per-epoch records
@@ -53,6 +57,8 @@ from .fgas import build_fgas, format_table
 from .messages import random_messages
 from .metrics import bit_accuracy, psnr
 from .models import build_model
+
+FGAS_MODES = ("sampling", "loss_weight")
 
 
 def image_loss_weight(train_cfg, epoch, ramp_start):
@@ -132,6 +138,10 @@ class Trainer:
         else:
             self.warmup_sampler = None
         self.fgas = build_fgas(cfg, self.sampler.probs) if cfg["fgas"]["enabled"] else None
+        self.fgas_mode = cfg["fgas"].get("mode", "sampling")
+        if self.fgas_mode not in FGAS_MODES:
+            raise ValueError(f"fgas.mode must be one of {FGAS_MODES}, got {self.fgas_mode!r}")
+        self.loss_weights = {}  # per-attack message-loss weights (loss_weight mode only)
 
         self.start_epoch = 1
         self.best_score = -math.inf
@@ -151,6 +161,8 @@ class Trainer:
             self.ramp_start = ckpt.get("ramp_start")
             if self.fgas is not None and ckpt.get("fgas"):
                 self.fgas.load_state_dict(ckpt["fgas"])
+                if self.fgas_mode == "loss_weight" and self.fgas.history:
+                    self.loss_weights = self.weights_from_probs(self.fgas.probs)
             print(f"Resumed from {train_cfg['resume']} at epoch {self.start_epoch}")
         elif train_cfg.get("init_checkpoint"):
             ckpt = torch.load(train_cfg["init_checkpoint"], map_location=self.device, weights_only=False)
@@ -186,8 +198,9 @@ class Trainer:
             message = random_messages(cover.shape[0], length, device=self.device)
             attack_name = sampler.sample()
             watermarked, _, logits = self.model(cover, message, self.train_attacks[attack_name])
+            message_weight = train_cfg["message_loss_weight"] * self.loss_weights.get(attack_name, 1.0)
             loss, image_loss, message_loss = compute_losses(cover, watermarked, logits, message,
-                                                            image_weight, train_cfg["message_loss_weight"])
+                                                            image_weight, message_weight)
 
             self.optimizer.zero_grad(set_to_none=True)
             loss.backward()
@@ -210,13 +223,27 @@ class Trainer:
         return evaluate_attackwise(self.model, self.val_loader, self.eval_attacks, self.device, seed=self.seed,
                                    primary=self.sampler.names)
 
+    def weights_from_probs(self, probs):
+        """Message-loss weights K * p_a; they average 1 over the K training attacks."""
+        k = len(self.sampler.names)
+        return {name: k * probs[name] for name in self.sampler.names}
+
     def fgas_update(self, result, step):
-        """Feed attack-wise validation accuracy to FGAS and hand the new distribution to the sampler."""
+        """Feed attack-wise validation accuracy to FGAS and apply the new distribution.
+
+        Sampling mode hands it to the sampler; loss_weight mode keeps the sampler
+        uniform and turns it into per-attack message-loss weights.
+        """
         accuracies = {name: result["attacks"][name]["bit_acc"] for name in self.sampler.names}
-        self.sampler.set_probs(self.fgas.update(accuracies, step=step))
+        probs = self.fgas.update(accuracies, step=step)
+        if self.fgas_mode == "loss_weight":
+            self.loss_weights = self.weights_from_probs(probs)
+        else:
+            self.sampler.set_probs(probs)
         with open(self.run_dir / "fgas_history.json", "w", encoding="utf-8") as f:
             json.dump(self.fgas.history, f, indent=2)
-        print(f"FGAS update (after epoch {step}):", flush=True)
+        target = "message-loss weights = K x new_prob" if self.fgas_mode == "loss_weight" else "sampling"
+        print(f"FGAS update (after epoch {step}, {target}):", flush=True)
         print(format_table(self.fgas.history[-1]["rows"]), flush=True)
 
     def _log(self, row, record):
@@ -243,6 +270,7 @@ class Trainer:
             start = time.time()
             sampler = self.active_sampler(epoch)
             probs_used = {n: sampler.probs.get(n, 0.0) for n in self.sampler.names}
+            weights_used = {n: self.loss_weights.get(n, 1.0) for n in self.sampler.names}
             train_stats = self.train_epoch(epoch)
             counts = {n: sampler.counts.get(n, 0) for n in self.sampler.names}
             result = self.validate()
@@ -250,9 +278,13 @@ class Trainer:
             row = {"epoch": epoch, **train_stats, **flatten_eval(result)}
             row.update({f"prob_{n}": p for n, p in probs_used.items()})
             row.update({f"count_{n}": c for n, c in counts.items()})
+            record = {"epoch": epoch, "train": train_stats, "val": result,
+                      "sampler_probs": probs_used, "sampler_counts": counts}
+            if self.fgas is not None and self.fgas_mode == "loss_weight":
+                row.update({f"lossw_{n}": w for n, w in weights_used.items()})
+                record["loss_weights"] = weights_used
             row["epoch_time_s"] = time.time() - start
-            self._log(row, {"epoch": epoch, "train": train_stats, "val": result,
-                            "sampler_probs": probs_used, "sampler_counts": counts})
+            self._log(row, record)
 
             # Warm-up epochs trade image quality for accuracy, so they are not eligible as "best".
             train_cfg = self.cfg["train"]

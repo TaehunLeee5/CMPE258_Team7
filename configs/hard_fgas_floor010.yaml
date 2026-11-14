@@ -1,0 +1,9 @@
+# FGAS ablation (single seed, exploratory): higher probability floor, closer to uniform sampling.
+# Identical to hard_fgas.yaml except for fgas.min_prob.
+_base_: hard_fgas.yaml
+
+experiment:
+  name: hard_fgas_floor010
+
+fgas:
+  min_prob: 0.10

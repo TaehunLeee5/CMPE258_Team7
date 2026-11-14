@@ -34,8 +34,23 @@ def test_fallback_changes_only_power():
     assert p2["fgas"]["power"] == 2.0
 
 
+ABLATIONS = {"floor002": ("min_prob", 0.02), "floor010": ("min_prob", 0.10), "int1": ("update_interval", 1),
+             "int5": ("update_interval", 5), "lossweight": ("mode", "loss_weight")}
+
+
+@pytest.mark.parametrize("variant", sorted(ABLATIONS))
+def test_ablation_changes_exactly_one_fgas_key(variant):
+    key, value = ABLATIONS[variant]
+    base = load_config(CONFIGS / "hard_fgas.yaml")
+    cfg = load_config(CONFIGS / f"hard_fgas_{variant}.yaml")
+    assert cfg["fgas"][key] == value != base["fgas"].get(key)
+    assert cfg["experiment"]["name"] == f"hard_fgas_{variant}"
+    base_rest = _without(base, "experiment.name", *([f"fgas.{key}"] if key in base["fgas"] else []))
+    assert _without(cfg, "experiment.name", f"fgas.{key}") == base_rest
+
+
 @pytest.mark.parametrize("name", ["hard_base", "hard_uniform", "hard_fgas", "hard_fgas_p2",
-                                  "calib_w100", "calib_w200", "calib_w400", "calib_w100_strong"])
+                                  *(f"hard_fgas_{v}" for v in sorted(ABLATIONS)), "calib_w100", "calib_w200", "calib_w400", "calib_w100_strong"])
 def test_hardened_configs_build(name):
     cfg = load_config(CONFIGS / f"{name}.yaml")
     attacks = cfg["attacks"]
