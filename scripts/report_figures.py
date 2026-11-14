@@ -15,8 +15,11 @@ Figures (hardened benchmark, from --hard-dir, default results/checkin3; skipped 
   method_bars          uniform vs FGAS bit accuracy per attack, mean +- std over seeds
                        (main_comparison.csv from scripts/aggregate_seeds.py)
   fgas_over_time       FGAS sampling probabilities over training (runs/hard_fgas_s42/fgas_history.json)
-  psnr_vs_acc          worst-case and mean attacked accuracy vs PSNR, one point per run
-                       (runs/*/best_test_eval.json)
+  trade_off            worst-case and mean attacked accuracy vs test PSNR across image-loss
+                       weights 100 / 200 / 400, one line per method; weight 200 = runs/hard_<m>_s*
+                       (mean +- std over seeds), 100 / 400 = <variants-dir>/runs/hard_<m>_w<w>_s*
+  ablations            worst-case and mean accuracy per FGAS variant (<variants-dir>/runs/
+                       hard_fgas_<variant>_s42), reference lines for uniform and FGAS at seed 42
   new_attack_examples  JPEG, crop, occlusion, real JPEG and combo on a watermarked crop
                        (runs/hard_uniform_s42/best.pt and the prepared DIV2K test images)
 """
@@ -24,6 +27,7 @@ Figures (hardened benchmark, from --hard-dir, default results/checkin3; skipped 
 import argparse
 import csv
 import json
+import statistics
 import sys
 from pathlib import Path
 
@@ -235,6 +239,10 @@ def attack_examples(out_dir, index=100):
 
 
 HARD_DIR = RESULTS / "checkin3"
+VARIANTS_DIR = RESULTS / "final" / "variants"
+WEIGHTS = (100, 200, 400)
+ABLATIONS = {"floor002": "floor 0.02", "floor010": "floor 0.10", "int1": "update every epoch",
+             "int5": "update every 5 epochs", "p2": "power 2", "lossweight": "loss weighting"}
 METHODS = {"hard_uniform": ("Uniform", COLORS["uniform"]), "hard_fgas": ("FGAS", COLORS["fgas"])}
 HARD_ATTACKS = ["clean", "noise", "blur", "brightness", "resize", "jpeg", "crop", "occlusion", "jpeg_real", "combo"]
 
@@ -300,31 +308,100 @@ def fgas_over_time(out_dir, run="hard_fgas_s42"):
     _save(fig, out_dir, "fgas_over_time")
 
 
-def psnr_vs_acc(out_dir):
-    paths = sorted((HARD_DIR / "runs").glob("hard_*_s*/best_test_eval.json"))
-    if not paths:
-        print(f"skipped: no {HARD_DIR / 'runs'}/hard_*_s*/best_test_eval.json")
+def _load_eval(run_dir):
+    """Test-set PSNR, worst-case and mean attacked bit accuracy of one run (None if not finished)."""
+    path = Path(run_dir) / "best_test_eval.json"
+    if not path.exists():
+        return None
+    ev = json.loads(path.read_text())
+    return {"psnr": ev["image_quality"]["psnr"], "worst": ev["worst_case"]["bit_acc"],
+            "mean": ev["mean_attacked_bit_acc"]}
+
+
+def _runs(base, pattern):
+    return [e for e in (_load_eval(p) for p in sorted((Path(base) / "runs").glob(pattern))) if e]
+
+
+def _mean_std(values):
+    return statistics.fmean(values), statistics.stdev(values) if len(values) > 1 else 0.0
+
+
+def trade_off(out_dir):
+    """Accuracy vs PSNR across image-loss weights 100 / 200 / 400, one line per method.
+
+    Weight 200 is the main comparison (all seeds in --hard-dir, mean +- std);
+    weights 100 and 400 come from --variants-dir. Missing runs are skipped.
+    """
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3.8))
+    plotted = False
+    for method, (label, color) in METHODS.items():
+        points = []
+        for weight in WEIGHTS:
+            runs = (_runs(HARD_DIR, f"{method}_s*") if weight == 200
+                    else _runs(VARIANTS_DIR, f"{method}_w{weight}_s*"))
+            if runs:
+                stats = {k: _mean_std([r[k] for r in runs]) for k in ("psnr", "worst", "mean")}
+                points.append((weight, len(runs), stats))
+        if not points:
+            continue
+        plotted = True
+        points.sort(key=lambda p: p[2]["psnr"][0])
+        seeds = ", ".join(f"w{w}: n={n}" for w, n, _ in sorted(points))
+        for ax, key in zip(axes, ("worst", "mean")):
+            ax.errorbar([p[2]["psnr"][0] for p in points], [100 * p[2][key][0] for p in points],
+                        xerr=[p[2]["psnr"][1] for p in points], yerr=[100 * p[2][key][1] for p in points],
+                        color=color, marker="o", capsize=3, label=f"{label} ({seeds})")
+            for weight, _, stats in points:
+                ax.annotate(f"w{weight}", (stats["psnr"][0], 100 * stats[key][0]), fontsize=7.5,
+                            xytext=(4, -10 if method == "hard_uniform" else 5), textcoords="offset points",
+                            color=color)
+    if not plotted:
+        plt.close(fig)
+        print(f"skipped: no trade-off runs in {HARD_DIR / 'runs'} or {VARIANTS_DIR / 'runs'}")
         return
-    fig, axes = plt.subplots(1, 2, figsize=(10, 3.6))
-    for path in paths:
-        run = path.parent.name
-        method = run.rsplit("_s", 1)[0]
-        label, color = METHODS.get(method, (method, "#555555"))
-        ev = json.loads(path.read_text())
-        psnr = ev["image_quality"]["psnr"]
-        for ax, value in zip(axes, (ev["worst_case"]["bit_acc"], ev["mean_attacked_bit_acc"])):
-            ax.scatter(psnr, 100 * value, color=color, label=label, s=36)
-            ax.annotate(run.rsplit("_s", 1)[1], (psnr, 100 * value), fontsize=7, xytext=(3, 3),
-                        textcoords="offset points")
     for ax, title in zip(axes, ("Worst-case attack", "Mean over training attacks")):
-        handles, labels = ax.get_legend_handles_labels()
-        unique = dict(zip(labels, handles))
-        ax.legend(unique.values(), unique.keys(), fontsize=8, frameon=False)
-        ax.set_xlabel("PSNR (dB)")
+        ax.margins(x=0.1, y=0.15)  # room for the point labels
+        ax.set_xlabel("Test PSNR (dB)")
         ax.set_ylabel("Bit accuracy (%)")
-        ax.set_title(f"{title} (labels = seed)", fontsize=10)
+        ax.set_title(f"{title} (labels = image-loss weight)", fontsize=10)
+        ax.legend(fontsize=7.5, frameon=False)
     fig.tight_layout()
-    _save(fig, out_dir, "psnr_vs_acc")
+    _save(fig, out_dir, "trade_off")
+
+
+def ablations(out_dir):
+    """Worst-case and mean bit accuracy per FGAS variant (seed 42), with uniform and default FGAS as references."""
+    refs = {m: _load_eval(HARD_DIR / "runs" / f"{m}_s42") for m in METHODS}
+    variants = {v: _load_eval(VARIANTS_DIR / "runs" / f"hard_fgas_{v}_s42") for v in ABLATIONS}
+    if not any(variants.values()):
+        print(f"skipped: no hard_fgas_<variant>_s42 runs in {VARIANTS_DIR / 'runs'}")
+        return
+    names = list(ABLATIONS)
+    fig, axes = plt.subplots(1, 2, figsize=(11, 3.8))
+    for ax, key, title in zip(axes, ("worst", "mean"), ("Worst-case attack", "Mean over training attacks")):
+        values = [100 * variants[v][key] if variants[v] else None for v in names]
+        known = [v for v in values if v is not None]
+        for method, ls in (("hard_uniform", "--"), ("hard_fgas", ":")):
+            if refs[method]:
+                label, color = METHODS[method]
+                ax.axhline(100 * refs[method][key], color=color, ls=ls, lw=1.4,
+                           label=f"{label} (default, {100 * refs[method][key]:.2f})")
+                known.append(100 * refs[method][key])
+        low, high = min(known), max(known)
+        bottom, top = max(0.0, low - 0.25 * (high - low + 1)), min(100.5, high + 0.25 * (high - low + 1))
+        ax.set_ylim(bottom, top)
+        bars = ax.bar(range(len(names)), [v if v is not None else bottom for v in values],
+                      color=COLORS["fgas"], alpha=0.75)
+        for bar, value in zip(bars, values):  # unfinished runs are labelled at the axis floor
+            ax.text(bar.get_x() + bar.get_width() / 2, value if value is not None else bottom,
+                    f"{value:.2f}" if value is not None else "in progress", ha="center", va="bottom", fontsize=7.5)
+        ax.set_xticks(range(len(names)), [ABLATIONS[v] for v in names], rotation=20, ha="right")
+        ax.set_ylabel("Bit accuracy (%)")
+        ax.set_title(title, fontsize=10)
+        ax.legend(fontsize=7.5, frameon=False, loc="lower right")
+    fig.suptitle("FGAS variants on the DIV2K test set: single seed (42), exploratory", fontsize=10)
+    fig.tight_layout()
+    _save(fig, out_dir, "ablations")
 
 
 def new_attack_examples(out_dir, run="hard_uniform_s42", index=10):
@@ -374,17 +451,20 @@ def new_attack_examples(out_dir, run="hard_uniform_s42", index=10):
 
 FIGURES = {"architecture": architecture, "robustness": robustness, "training_curves": training_curves,
            "fgas_probs": fgas_probs, "attack_examples": attack_examples, "method_bars": method_bars,
-           "fgas_over_time": fgas_over_time, "psnr_vs_acc": psnr_vs_acc, "new_attack_examples": new_attack_examples}
+           "fgas_over_time": fgas_over_time, "trade_off": trade_off,
+           "ablations": ablations, "new_attack_examples": new_attack_examples}
 
 
 def main():
-    global HARD_DIR
+    global HARD_DIR, VARIANTS_DIR
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--only", nargs="*", choices=sorted(FIGURES), default=sorted(FIGURES))
     parser.add_argument("--out-dir", default=str(RESULTS / "figures"))
     parser.add_argument("--hard-dir", default=str(HARD_DIR), help="collected hardened-benchmark results")
+    parser.add_argument("--variants-dir", default=str(VARIANTS_DIR),
+                        help="image-weight and FGAS-variant runs (trade_off, ablations)")
     args = parser.parse_args()
-    HARD_DIR = Path(args.hard_dir)
+    HARD_DIR, VARIANTS_DIR = Path(args.hard_dir), Path(args.variants_dir)
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     for name in args.only:
