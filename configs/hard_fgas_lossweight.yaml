@@ -1,0 +1,11 @@
+# FGAS ablation (single seed, exploratory): failure-weighted loss. The sampler
+# stays uniform; the FGAS distribution re-weights the message loss instead
+# (weight K * p_a, mean 1), as Group DRO re-weights the training loss.
+# Identical to hard_fgas.yaml except for fgas.mode.
+_base_: hard_fgas.yaml
+
+experiment:
+  name: hard_fgas_lossweight
+
+fgas:
+  mode: loss_weight

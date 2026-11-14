@@ -63,7 +63,9 @@ attacks:
 
 fgas:
   enabled: false
-  update_at_start: false      # run one FGAS update on the loaded weights before epoch 1
+  mode: sampling              # sampling: FGAS sets attack probabilities; loss_weight: uniform sampling,
+                              # FGAS sets per-attack message-loss weights K * p_a
+  update_at_start: false     # run one FGAS update on the loaded weights before epoch 1
   update_interval: 1          # epochs between FGAS updates
   min_prob: 0.1               # probability floor so no attack disappears
   power: 1.0                  # p ~ failure^power (1.0 = proportional to failure)

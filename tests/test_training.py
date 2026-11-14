@@ -114,3 +114,60 @@ def test_attack_warmup_must_be_subset_of_training_attacks(small_cfg):
     apply_override(small_cfg, "attacks.warmup=[noise, jpeg]")
     with pytest.raises(ValueError):
         Trainer(small_cfg)
+
+
+def test_loss_weight_mode_keeps_sampler_uniform_and_reweights_loss(small_cfg, tmp_path):
+    apply_override(small_cfg, f"experiment.output_dir={tmp_path.as_posix()}")
+    apply_override(small_cfg, "train.epochs=2")
+    apply_override(small_cfg, "fgas.enabled=true")
+    apply_override(small_cfg, "fgas.mode=loss_weight")
+    apply_override(small_cfg, "fgas.update_at_start=true")
+    trainer = Trainer(small_cfg)
+    trainer.fit()
+
+    names = small_cfg["attacks"]["train"]
+    k, floor = len(names), small_cfg["fgas"]["min_prob"]
+    run_dir = tmp_path / small_cfg["experiment"]["name"]
+    history = json.loads((run_dir / "fgas_history.json").read_text())
+    assert trainer.sampler.probs == pytest.approx({n: 1 / k for n in names})
+    latest = {r["attack"]: r["new_prob"] for r in history[-1]["rows"]}
+    assert trainer.loss_weights == pytest.approx({n: k * p for n, p in latest.items()})
+    assert sum(trainer.loss_weights.values()) / k == pytest.approx(1.0)
+    assert min(trainer.loss_weights.values()) >= k * floor - 1e-9
+    with open(run_dir / "metrics.csv", newline="") as f:
+        rows = list(csv.DictReader(f))
+    first_update = {r["attack"]: r["new_prob"] for r in history[0]["rows"]}
+    for n in names:
+        assert float(rows[0][f"prob_{n}"]) == pytest.approx(1 / k)
+        assert float(rows[0][f"lossw_{n}"]) == pytest.approx(k * first_update[n])
+
+
+def test_loss_weights_survive_resume(small_cfg, tmp_path):
+    apply_override(small_cfg, f"experiment.output_dir={tmp_path.as_posix()}")
+    apply_override(small_cfg, "train.epochs=2")
+    apply_override(small_cfg, "fgas.enabled=true")
+    apply_override(small_cfg, "fgas.mode=loss_weight")
+    apply_override(small_cfg, "fgas.update_interval=1")
+    first = Trainer(small_cfg)
+    first.fit()
+    apply_override(small_cfg, "train.epochs=3")
+    apply_override(small_cfg, f"train.resume={(tmp_path / small_cfg['experiment']['name'] / 'last.pt').as_posix()}")
+    resumed = Trainer(small_cfg)
+    assert resumed.loss_weights == pytest.approx(first.loss_weights)
+    assert resumed.sampler.probs == pytest.approx(first.sampler.probs)
+
+
+def test_sampling_mode_logs_no_loss_weights(small_cfg, tmp_path):
+    apply_override(small_cfg, f"experiment.output_dir={tmp_path.as_posix()}")
+    apply_override(small_cfg, "train.epochs=1")
+    apply_override(small_cfg, "fgas.enabled=true")
+    Trainer(small_cfg).fit()
+    with open(tmp_path / small_cfg["experiment"]["name"] / "metrics.csv", newline="") as f:
+        header = next(csv.reader(f))
+    assert not any(h.startswith("lossw_") for h in header)
+
+
+def test_unknown_fgas_mode_is_rejected(small_cfg):
+    apply_override(small_cfg, "fgas.mode=reweight")
+    with pytest.raises(ValueError):
+        Trainer(small_cfg)

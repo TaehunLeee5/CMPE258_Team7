@@ -1,0 +1,9 @@
+# FGAS ablation (single seed, exploratory): FGAS update every 5 epochs instead of every 2.
+# Identical to hard_fgas.yaml except for fgas.update_interval.
+_base_: hard_fgas.yaml
+
+experiment:
+  name: hard_fgas_int5
+
+fgas:
+  update_interval: 5
