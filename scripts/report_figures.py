@@ -398,7 +398,7 @@ def ablations(out_dir):
         ax.set_xticks(range(len(names)), [ABLATIONS[v] for v in names], rotation=20, ha="right")
         ax.set_ylabel("Bit accuracy (%)")
         ax.set_title(title, fontsize=10)
-        ax.legend(fontsize=7.5, frameon=False, loc="lower right")
+        ax.legend(fontsize=7.5, frameon=False, loc="upper right")
     fig.suptitle("FGAS variants on the DIV2K test set: single seed (42), exploratory", fontsize=10)
     fig.tight_layout()
     _save(fig, out_dir, "ablations")

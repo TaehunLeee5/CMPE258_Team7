@@ -193,17 +193,80 @@ Neither method reached the 38 dB PSNR target (about 36 dB at weight 200).
 
 The canonical run for this section is [notebooks/checkin3_colab.ipynb](notebooks/checkin3_colab.ipynb). Set `MY_JOBS` (e.g. `['hard_uniform_s42', 'hard_fgas_s42']`) and run all. Runs are written to Drive and resume after a disconnect.
 
+## Final results
+
+### FGAS variants and image-quality trade-off
+
+All runs are seed 42 on a Colab Tesla T4, use the hardened benchmark above (60 epochs, same warm-ups) and are scored on the DIV2K test set. Results are in [results/final/variants/](results/final/variants/). These runs are **single-seed and exploratory**; they are not part of the pre-registered criterion. "Full-message" is the mean over the 7 training attacks of the fraction of images with all 32 bits correct.
+
+**Trade-off at matched image quality.** FGAS and uniform sampling were also trained at image-loss weights 100 and 400 (`--set train.image_loss_weight=...`); weight 200 is the main comparison.
+
+| Image weight | Method | PSNR (dB) | Worst case (crop) | Mean attacked | Full-message |
+|---|---|---|---|---|---|
+| 100 | Uniform | 33.77 | 90.35% | 98.18% | 82.32% |
+| 100 | FGAS | 33.33 | **94.76%** | 98.61% | 82.46% |
+| 200 | Uniform | 36.04 | 86.30% | 97.49% | 78.25% |
+| 200 | FGAS | 35.70 | **93.66%** | 98.29% | 77.29% |
+| 400 | Uniform | 37.71 | 86.11% | 97.20% | 71.61% |
+| 400 | FGAS | 37.92 | **91.60%** | 97.50% | 68.54% |
+
+- FGAS's worst-case bit accuracy is 4.4 to 7.4 pp higher at every weight. At weight 400 FGAS also has the higher PSNR (+0.21 dB), so the gain is not explained by a weaker image-quality constraint.
+- Mean attacked bit accuracy is higher for FGAS at every weight (+0.3 to +0.8 pp).
+- Full-message accuracy is not: FGAS is +0.1 pp at weight 100 but −1.0 pp at 200 and −3.1 pp at 400. The cost is on noise, where FGAS samples less: noise full-message accuracy is 33.25% vs. 48.00% at weight 400.
+- Weight 400 raised PSNR to about 38 dB without collapse for either method.
+
+**Ablations.** Each config changes one FGAS setting from [configs/hard_fgas.yaml](configs/hard_fgas.yaml) (checked by `tests/test_configs.py`).
+
+| Variant | Config | PSNR (dB) | Worst case (crop) | Mean attacked | Full-message |
+|---|---|---|---|---|---|
+| Uniform (reference) | `hard_uniform` | 36.04 | 86.30% | 97.49% | 78.25% |
+| FGAS default (floor 0.05, every 2 epochs, power 1) | `hard_fgas` | 35.70 | 93.66% | 98.29% | 77.29% |
+| floor 0.02 | `hard_fgas_floor002` | 35.36 | 94.27% | 98.27% | 76.89% |
+| floor 0.10 | `hard_fgas_floor010` | 35.43 | 92.21% | 98.16% | 77.75% |
+| update every epoch | `hard_fgas_int1` | 35.30 | 94.80% | 98.50% | 79.29% |
+| update every 5 epochs | `hard_fgas_int5` | 35.87 | 93.10% | 98.20% | 77.54% |
+| power 2 | `hard_fgas_p2` | 35.26 | 94.52% | 98.31% | 78.25% |
+| loss weighting (`fgas.mode: loss_weight`) | `hard_fgas_lossweight` | rerun in progress | | | |
+
+- Every FGAS variant beats uniform on the worst case by 5.9 to 8.5 pp. The variants differ from each other by at most 2.6 pp on one seed, so they should not be ranked on these numbers.
+- The higher floor (0.10, closer to uniform sampling) gives the smallest gain. Four of the five variants have 0.27 to 0.44 dB lower PSNR than default FGAS; updating every 5 epochs is 0.17 dB higher.
+- The first loss-weighting run never learned the message: bit accuracy stayed at 50% from epoch 1, during the shared attack warm-up when every loss weight is still 1, so loss weighting never took effect. Same-seed runs differ on the GPU, and this was the only one of 12 that did not leave chance within the warm-up. It is kept as `runs/hard_fgas_lossweight_failed_s42` and is being rerun.
+
+| | |
+|---|---|
+| ![trade-off](results/final/variants/figures/trade_off.png) | ![ablations](results/final/variants/figures/ablations.png) |
+
+Reproduce: in [notebooks/checkin3_colab.ipynb](notebooks/checkin3_colab.ipynb), add the jobs below and list them in `MY_JOBS`, then build the tables and figures locally.
+
+```python
+for w in (100, 400):
+    ALL_JOBS[f'hard_uniform_w{w}_s42'] = ('configs/hard_uniform.yaml', 42, [f'train.image_loss_weight={w}'])
+    ALL_JOBS[f'hard_fgas_w{w}_s42'] = ('configs/hard_fgas.yaml', 42, [f'train.image_loss_weight={w}'])
+for v in ('lossweight', 'floor002', 'floor010', 'int1', 'int5', 'p2'):
+    ALL_JOBS[f'hard_fgas_{v}_s42'] = (f'configs/hard_fgas_{v}.yaml', 42, [])
+```
+
+```bash
+V=results/final/variants; M=results/checkin3/runs
+python scripts/aggregate_seeds.py $V/runs/hard_*_w*_s42 $M/hard_uniform_s42 $M/hard_fgas_s42 --no-group --out $V/trade_off
+python scripts/aggregate_seeds.py $V/runs/hard_fgas_{floor,int,p2,lossweight}*_s42 $M/hard_uniform_s42 $M/hard_fgas_s42 \
+    --no-group --out $V/ablations
+python scripts/report_figures.py --hard-dir results/checkin3 --out-dir $V/figures --only trade_off ablations
+```
+
 ## Repository layout
 
 ```
 configs/      baseline.yaml, fgas.yaml, baseline_continue.yaml (DIV2K);
-              hard_base.yaml, hard_uniform.yaml, hard_fgas.yaml, hard_fgas_p2.yaml, calib_*.yaml (hardened)
+              hard_base.yaml, hard_uniform.yaml, hard_fgas.yaml, hard_fgas_p2.yaml, calib_*.yaml (hardened);
+              hard_fgas_{floor002,floor010,int1,int5,lossweight}.yaml (FGAS ablations)
 src/wm/       config, data, messages, models, attacks, metrics, evaluate, fgas, trainer
 scripts/      download_div2k, prepare_div2k, validate_div2k, download_coco, prepare_coco, validate_coco,
               train, evaluate, sweep, fgas_update, figure1, report_figures, aggregate_seeds
 notebooks/    checkin2_colab.ipynb (DIV2K baseline), checkin3_colab.ipynb (hardened benchmark runs)
 tests/        pytest suite (shapes, gradients, attacks, metrics, FGAS, training loop)
-results/      Colab T4 results (JSON/CSV), baseline checkpoint, figures/; checkin3/ (Experiment D, hardened runs)
+results/      Colab T4 results (JSON/CSV), baseline checkpoint, figures/; checkin3/ (Experiment D, hardened runs);
+              final/variants/ (image-weight trade-off and FGAS ablations)
 ```
 
 ## Team ownership and next steps
