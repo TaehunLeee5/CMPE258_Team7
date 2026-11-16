@@ -195,6 +195,49 @@ The canonical run for this section is [notebooks/checkin3_colab.ipynb](notebooks
 
 ## Final results
 
+### Main comparison over seeds: uniform vs FGAS
+
+This is the pre-registered comparison: `hard_uniform` and `hard_fgas` (image-loss weight 200, 60 epochs) for seeds 42–46, run on a Colab Tesla T4 and scored on the DIV2K test set. Seed 42 is the run from the hardened benchmark section above. Seeds 43–46 were run later on a newer Colab image (PyTorch 2.14.1 instead of 2.11.0; `run_info.json` records both). Results are in [results/final/main/](results/final/main/).
+
+**Status:** `hard_fgas_s46` stopped at epoch 58 of 60 when the Colab GPU quota ran out. It has no test evaluation yet, so the tables below cover the four complete seed pairs, 42–45. Seed 46 will be added once that run finishes.
+
+**Pre-registered result (seeds 42–45, n = 4 per method): the criterion is not met.**
+
+| | Uniform | FGAS |
+|---|---|---|
+| Worst attack bit accuracy | 77.84 ± 17.81% | 60.70 ± 21.98% |
+| Mean attacked bit accuracy | 85.84 ± 23.13% | 61.88 ± 24.28% |
+| Full-message accuracy | 56.58 ± 37.78% | 19.32 ± 38.64% |
+| PSNR | 47.46 ± 23.10 dB | 60.64 ± 19.63 dB |
+
+The paired per-seed differences (FGAS − uniform) are in `main_comparison_criterion.json`. FGAS has the better worst case on 1 of 4 seeds.
+
+**Why: four runs never learned the message.** In `hard_fgas_s43`, `hard_fgas_s44`, `hard_fgas_s45` and `hard_uniform_s43`, bit accuracy stayed at 50% (chance) from epoch 1 to the end. The image-loss ramp was then forced to start at its latest epoch, and the encoder learned to leave images almost unchanged, which is where the high PSNR (61–84 dB) comes from. [per_run.md](results/final/main/per_run.md) shows every run.
+
+- These runs failed during the shared attack warm-up (noise, blur, brightness and resize only), before FGAS had any effect. In the failed FGAS runs, the first FGAS update came only after epoch 10, once the warm-up had already ended without learning the message. Up to that point, uniform and FGAS training run the same code.
+- Runs with the same seed do not train identically on the GPU: `hard_uniform_s44` left chance at epoch 2, but `hard_fgas_s44` did not. Whether a run escapes chance in the warm-up is therefore partly luck, and with n = 4 the 3-vs-1 split between methods cannot be told apart from chance.
+- The variant runs above hit the same failure once in 12 runs. Here it happened in 4 of the 8 new runs, all on the newer Colab image.
+
+**Runs that learned the message (post hoc, not pre-registered).** Uniform: seeds 42, 44, 45 and 46, worst case (crop) 86.30, 87.19, 86.73 and 87.91%, PSNR 35.1–36.7 dB. FGAS: seed 42, worst case 93.66% at 35.70 dB. FGAS seed 46 reaches 93.1% on the COCO validation set at epoch 58; its test evaluation is pending. Only seed 42 has both methods trained successfully, so this comparison is not paired and is not the pre-registered result.
+
+| | |
+|---|---|
+| ![method bars](results/final/main/figures/method_bars.png) | ![FGAS probabilities](results/final/main/figures/fgas_over_time.png) |
+
+Figure 1 at the current image quality (seed 42 FGAS, DIV2K test crops): [figure1.png](results/final/main/figures/figure1.png).
+
+Reproduce: in [notebooks/checkin3_colab.ipynb](notebooks/checkin3_colab.ipynb), add seeds 45 and 46 to `ALL_JOBS`, set `MY_JOBS` to `hard_{uniform,fgas}_s{43..46}`, and run. Then:
+
+```bash
+R=results/final/main/runs
+python scripts/aggregate_seeds.py $R/hard_uniform_s4[2-5] $R/hard_fgas_s4[2-5] --out results/final/main/main_comparison \
+    --criterion hard_uniform hard_fgas
+python scripts/aggregate_seeds.py $R/hard_uniform_s* $R/hard_fgas_s* --no-group --out results/final/main/per_run
+python scripts/report_figures.py --hard-dir results/final/main --out-dir results/final/main/figures --only method_bars fgas_over_time
+python scripts/figure1.py --checkpoint $R/hard_fgas_s42/best.pt --split test --indices 0 150 300 \
+    --out results/final/main/figures/figure1.png
+```
+
 ### FGAS variants and image-quality trade-off
 
 All runs are seed 42 on a Colab Tesla T4, use the hardened benchmark above (60 epochs, same warm-ups) and are scored on the DIV2K test set. Results are in [results/final/variants/](results/final/variants/). These runs are **single-seed and exploratory**; they are not part of the pre-registered criterion. "Full-message" is the mean over the 7 training attacks of the fraction of images with all 32 bits correct.
