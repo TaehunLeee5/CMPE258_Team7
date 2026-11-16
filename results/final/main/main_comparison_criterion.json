@@ -1,11 +1,11 @@
 {
   "uniform": "hard_uniform",
   "fgas": "hard_fgas",
-  "delta_worst_pp": -17.140625,
-  "delta_psnr_db": 13.179322509765626,
-  "delta_mean_attacked_pp": -23.959542410714285,
-  "delta_mean_msg_pp": -37.25892857142857,
-  "fgas_clean_bit_acc": 0.6227734375,
+  "delta_worst_pp": -12.73906250000001,
+  "delta_psnr_db": 10.275673095703134,
+  "delta_mean_attacked_pp": -19.080580357142864,
+  "delta_mean_msg_pp": -29.542857142857144,
+  "fgas_clean_bit_acc": 0.6975,
   "checks": {
     "worst_case_gain_ge_2pp": false,
     "psnr_within_0.5db": false,
@@ -18,7 +18,8 @@
       42,
       43,
       44,
-      45
+      45,
+      46
     ],
     "units": "accuracies in pp, psnr in dB; FGAS - uniform",
     "per_seed": [
@@ -49,31 +50,38 @@
         "mean_attacked_bit_acc": -47.419642857142854,
         "mean_attacked_msg_acc": -74.85714285714286,
         "psnr": 47.033427429199214
+      },
+      {
+        "seed": 46,
+        "worst_bit_acc": 4.8671875000000036,
+        "mean_attacked_bit_acc": 0.43526785714286254,
+        "mean_attacked_msg_acc": 1.3214285714285734,
+        "psnr": -1.3389245605468716
       }
     ],
     "summary": {
       "worst_bit_acc": {
-        "mean": -17.140624999999996,
-        "std": 23.55632292899076,
-        "n": 4
+        "mean": -12.739062499999998,
+        "std": 22.650475153033835,
+        "n": 5
       },
       "mean_attacked_bit_acc": {
-        "mean": -23.95954241071429,
-        "std": 27.403117000105084,
-        "n": 4
+        "mean": -19.080580357142857,
+        "std": 26.119331338915167,
+        "n": 5
       },
       "mean_attacked_msg_acc": {
-        "mean": -37.25892857142857,
-        "std": 42.473294680945365,
-        "n": 4
+        "mean": -29.542857142857137,
+        "std": 40.6284920006256,
+        "n": 5
       },
       "psnr": {
-        "mean": 13.179322509765624,
-        "std": 30.111707500837788,
-        "n": 4
+        "mean": 10.275673095703125,
+        "std": 26.873631984920376,
+        "n": 5
       }
     },
-    "fgas_better_worst_case": 1,
-    "num_paired_seeds": 4
+    "fgas_better_worst_case": 2,
+    "num_paired_seeds": 5
   }
 }
