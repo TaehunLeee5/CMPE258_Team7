@@ -1,7 +1,7 @@
 experiment:
   name: hard_fgas_s46
   seed: 46
-  output_dir: /content/drive/MyDrive/CMPE258_Team7/runs_hardened
+  output_dir: /kaggle/working/runs_hardened
   device: auto
 data:
   dataset: coco
@@ -46,7 +46,7 @@ train:
   message_loss_weight: 1.0
   log_interval: 50
   init_checkpoint: null
-  resume: null
+  resume: /kaggle/working/runs_hardened/hard_fgas_s46/last.pt
 attacks:
   train:
   - noise
