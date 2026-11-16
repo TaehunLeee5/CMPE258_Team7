@@ -356,4 +356,5 @@ class AttackSampler:
 
     def load_state_dict(self, state):
         self.set_probs(state["probs"])
-        self.generator.set_state(state["generator"])
+        # The generator lives on the CPU; a checkpoint loaded with map_location="cuda" moves its state to the GPU.
+        self.generator.set_state(state["generator"].cpu())

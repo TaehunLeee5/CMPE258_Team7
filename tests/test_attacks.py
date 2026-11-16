@@ -140,3 +140,29 @@ def test_sampler_follows_updated_probs():
     for _ in range(2000):
         sampler.sample()
     assert sampler.counts["a"] > 1600
+
+
+def _draws(sampler, n=50):
+    return [sampler.sample() for _ in range(n)]
+
+
+def test_sampler_state_round_trip_continues_the_same_draws():
+    sampler = AttackSampler(["a", "b", "c"], seed=0)
+    _draws(sampler)
+    state = sampler.state_dict()
+    expected = _draws(sampler)
+    restored = AttackSampler(["a", "b", "c"], seed=1)
+    restored.load_state_dict(state)
+    assert _draws(restored) == expected
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs a GPU")
+def test_sampler_state_loads_after_checkpoint_mapped_to_gpu():
+    sampler = AttackSampler(["a", "b", "c"], seed=0)
+    _draws(sampler)
+    state = sampler.state_dict()
+    expected = _draws(sampler)
+    state["generator"] = state["generator"].cuda()  # what torch.load(..., map_location="cuda") does
+    restored = AttackSampler(["a", "b", "c"], seed=1)
+    restored.load_state_dict(state)
+    assert _draws(restored) == expected
