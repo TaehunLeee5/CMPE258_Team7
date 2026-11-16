@@ -1,0 +1,1352 @@
+[
+  {
+    "step": 10,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.5003125,
+        "failure": 0.49968749999999995,
+        "old_prob": 0.1428571492433548,
+        "new_prob": 0.14293234327272364
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.5023125,
+        "failure": 0.49768749999999995,
+        "old_prob": 0.1428571492433548,
+        "new_prob": 0.14274621185736347
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.50146875,
+        "failure": 0.49853125,
+        "old_prob": 0.1428571492433548,
+        "new_prob": 0.14282473604821855
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.5016875,
+        "failure": 0.49831250000000005,
+        "old_prob": 0.1428571492433548,
+        "new_prob": 0.14280437792466352
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.5011875,
+        "failure": 0.4988125,
+        "old_prob": 0.1428571492433548,
+        "new_prob": 0.14285091077850356
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.500125,
+        "failure": 0.49987499999999996,
+        "old_prob": 0.1428571492433548,
+        "new_prob": 0.14294979309291364
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.50075,
+        "failure": 0.49924999999999997,
+        "old_prob": 0.1428571492433548,
+        "new_prob": 0.14289162702561362
+      }
+    ]
+  },
+  {
+    "step": 12,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.49834375,
+        "failure": 0.50165625,
+        "old_prob": 0.14293234327272364,
+        "new_prob": 0.14282419797319607
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.49740625,
+        "failure": 0.50259375,
+        "old_prob": 0.14274621185736347,
+        "new_prob": 0.142817766588702
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.49865625,
+        "failure": 0.50134375,
+        "old_prob": 0.14282473604821855,
+        "new_prob": 0.14274151625321485
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.49753125,
+        "failure": 0.50246875,
+        "old_prob": 0.14280437792466352,
+        "new_prob": 0.14283529837926057
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.4970625,
+        "failure": 0.5029375,
+        "old_prob": 0.14285091077850356,
+        "new_prob": 0.1429018819677736
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.49678125,
+        "failure": 0.50321875,
+        "old_prob": 0.14294979309291364,
+        "new_prob": 0.14297731342193443
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.49728125,
+        "failure": 0.50271875,
+        "old_prob": 0.14289162702561362,
+        "new_prob": 0.1429020254159185
+      }
+    ]
+  },
+  {
+    "step": 14,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.49840625,
+        "failure": 0.5015937500000001,
+        "old_prob": 0.14282419797319607,
+        "new_prob": 0.14286299522267365
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.498875,
+        "failure": 0.501125,
+        "old_prob": 0.142817766588702,
+        "new_prob": 0.1428163701825018
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.49859375,
+        "failure": 0.50140625,
+        "old_prob": 0.14274151625321485,
+        "new_prob": 0.14280429062351313
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.4988125,
+        "failure": 0.5011875,
+        "old_prob": 0.14283529837926057,
+        "new_prob": 0.14283092399083774
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.4985,
+        "failure": 0.5015000000000001,
+        "old_prob": 0.1429018819677736,
+        "new_prob": 0.14289315535037744
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.49928125,
+        "failure": 0.50071875,
+        "old_prob": 0.14297731342193443,
+        "new_prob": 0.14285852216424985
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.4980625,
+        "failure": 0.5019374999999999,
+        "old_prob": 0.1429020254159185,
+        "new_prob": 0.1429337424658464
+      }
+    ]
+  },
+  {
+    "step": 16,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.49453125,
+        "failure": 0.50546875,
+        "old_prob": 0.14286299522267365,
+        "new_prob": 0.142849000171998
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.4949375,
+        "failure": 0.5050625,
+        "old_prob": 0.1428163701825018,
+        "new_prob": 0.1427883814674738
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.49371875,
+        "failure": 0.50628125,
+        "old_prob": 0.14280429062351313,
+        "new_prob": 0.14289426024129423
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.49446875,
+        "failure": 0.50553125,
+        "old_prob": 0.14283092399083774,
+        "new_prob": 0.14283870396907056
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.494375,
+        "failure": 0.505625,
+        "old_prob": 0.14289315535037744,
+        "new_prob": 0.14287842876832615
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.49465625,
+        "failure": 0.50534375,
+        "old_prob": 0.14285852216424985,
+        "new_prob": 0.1428352848168051
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.4941875,
+        "failure": 0.5058125,
+        "old_prob": 0.1429337424658464,
+        "new_prob": 0.14291594056503212
+      }
+    ]
+  },
+  {
+    "step": 18,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.49846875,
+        "failure": 0.50153125,
+        "old_prob": 0.142849000171998,
+        "new_prob": 0.14284274193421204
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.49815625,
+        "failure": 0.5018437499999999,
+        "old_prob": 0.1427883814674738,
+        "new_prob": 0.14284135540695347
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.4985,
+        "failure": 0.5015000000000001,
+        "old_prob": 0.14289426024129423,
+        "new_prob": 0.1428624796863598
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.49828125,
+        "failure": 0.50171875,
+        "old_prob": 0.14283870396907056,
+        "new_prob": 0.1428549475277504
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.49828125,
+        "failure": 0.50171875,
+        "old_prob": 0.14287842876832615,
+        "new_prob": 0.14287480992737822
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.4986875,
+        "failure": 0.5013125,
+        "old_prob": 0.1428352848168051,
+        "new_prob": 0.1428156382791131
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.498125,
+        "failure": 0.5018750000000001,
+        "old_prob": 0.14291594056503212,
+        "new_prob": 0.14290802723823298
+      }
+    ]
+  },
+  {
+    "step": 20,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.50521875,
+        "failure": 0.49478124999999995,
+        "old_prob": 0.14284274193421204,
+        "new_prob": 0.14284072813380425
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.50496875,
+        "failure": 0.49503125000000003,
+        "old_prob": 0.14284135540695347,
+        "new_prob": 0.14286348935494309
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.50503125,
+        "failure": 0.49496874999999996,
+        "old_prob": 0.1428624796863598,
+        "new_prob": 0.1428681878734542
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.50525,
+        "failure": 0.49475,
+        "old_prob": 0.1428549475277504,
+        "new_prob": 0.1428438991199774
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.505125,
+        "failure": 0.49487499999999995,
+        "old_prob": 0.14287480992737822,
+        "new_prob": 0.1428655575621754
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.50484375,
+        "failure": 0.49515624999999996,
+        "old_prob": 0.1428156382791131,
+        "new_prob": 0.14286235803340697
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.50540625,
+        "failure": 0.49459375000000005,
+        "old_prob": 0.14290802723823298,
+        "new_prob": 0.14285577992223863
+      }
+    ]
+  },
+  {
+    "step": 22,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.4971875,
+        "failure": 0.5028125,
+        "old_prob": 0.14284072813380425,
+        "new_prob": 0.142838220195293
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.49734375,
+        "failure": 0.50265625,
+        "old_prob": 0.14286348935494309,
+        "new_prob": 0.14283517636331164
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.49571875,
+        "failure": 0.50428125,
+        "old_prob": 0.1428681878734542,
+        "new_prob": 0.14298753982509524
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.49746875,
+        "failure": 0.50253125,
+        "old_prob": 0.1428438991199774,
+        "new_prob": 0.14281384169178818
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.49784375,
+        "failure": 0.5021562500000001,
+        "old_prob": 0.1428655575621754,
+        "new_prob": 0.14279005225076533
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.49653125,
+        "failure": 0.50346875,
+        "old_prob": 0.14286235803340697,
+        "new_prob": 0.1429096178038076
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.49740625,
+        "failure": 0.50259375,
+        "old_prob": 0.14285577992223863,
+        "new_prob": 0.1428255518699391
+      }
+    ]
+  },
+  {
+    "step": 24,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.49625,
+        "failure": 0.5037499999999999,
+        "old_prob": 0.142838220195293,
+        "new_prob": 0.14285303105628228
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.49621875,
+        "failure": 0.5037812500000001,
+        "old_prob": 0.14283517636331164,
+        "new_prob": 0.14285438965648012
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.4961875,
+        "failure": 0.5038125,
+        "old_prob": 0.14298753982509524,
+        "new_prob": 0.1429334519035604
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.4961875,
+        "failure": 0.5038125,
+        "old_prob": 0.14281384169178818,
+        "new_prob": 0.14284660283690687
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.4965,
+        "failure": 0.5035000000000001,
+        "old_prob": 0.14279005225076533,
+        "new_prob": 0.14280590295451046
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.4960625,
+        "failure": 0.5039374999999999,
+        "old_prob": 0.1429096178038076,
+        "new_prob": 0.14290601295767058
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.49675,
+        "failure": 0.50325,
+        "old_prob": 0.1428255518699391,
+        "new_prob": 0.14280060863458932
+      }
+    ]
+  },
+  {
+    "step": 26,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.501375,
+        "failure": 0.498625,
+        "old_prob": 0.14285303105628228,
+        "new_prob": 0.14279074523479396
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.5006875,
+        "failure": 0.49931250000000005,
+        "old_prob": 0.14285438965648012,
+        "new_prob": 0.14285535114892814
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.500375,
+        "failure": 0.499625,
+        "old_prob": 0.1429334519035604,
+        "new_prob": 0.1429239398243025
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.500375,
+        "failure": 0.499625,
+        "old_prob": 0.14284660283690687,
+        "new_prob": 0.14288051529097573
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.50084375,
+        "failure": 0.49915624999999997,
+        "old_prob": 0.14280590295451046,
+        "new_prob": 0.1428165790220262
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.50065625,
+        "failure": 0.49934375,
+        "old_prob": 0.14290601295767058,
+        "new_prob": 0.14288406855470678
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.50046875,
+        "failure": 0.49953125,
+        "old_prob": 0.14280060863458932,
+        "new_prob": 0.14284880092426666
+      }
+    ]
+  },
+  {
+    "step": 28,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.49921875,
+        "failure": 0.50078125,
+        "old_prob": 0.14279074523479396,
+        "new_prob": 0.1428260136087494
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.49925,
+        "failure": 0.50075,
+        "old_prob": 0.14285535114892814,
+        "new_prob": 0.14285541917792313
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.49921875,
+        "failure": 0.50078125,
+        "old_prob": 0.1429239398243025,
+        "new_prob": 0.14289261090350366
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.49925,
+        "failure": 0.50075,
+        "old_prob": 0.14288051529097573,
+        "new_prob": 0.1428680012489469
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.49925,
+        "failure": 0.50075,
+        "old_prob": 0.1428165790220262,
+        "new_prob": 0.14283603311447216
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.49921875,
+        "failure": 0.50078125,
+        "old_prob": 0.14288406855470678,
+        "new_prob": 0.1428726752687058
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.49928125,
+        "failure": 0.50071875,
+        "old_prob": 0.14284880092426666,
+        "new_prob": 0.14284924667769902
+      }
+    ]
+  },
+  {
+    "step": 30,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.4949375,
+        "failure": 0.5050625,
+        "old_prob": 0.1428260136087494,
+        "new_prob": 0.14285635681940592
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.495,
+        "failure": 0.505,
+        "old_prob": 0.14285541917792313,
+        "new_prob": 0.1428653123759251
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.49515625,
+        "failure": 0.50484375,
+        "old_prob": 0.14289261090350366,
+        "new_prob": 0.1428695401685461
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.495,
+        "failure": 0.505,
+        "old_prob": 0.1428680012489469,
+        "new_prob": 0.14287160341143695
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.49496875,
+        "failure": 0.50503125,
+        "old_prob": 0.14283603311447216,
+        "new_prob": 0.14285849295823344
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.49528125,
+        "failure": 0.50471875,
+        "old_prob": 0.1428726752687058,
+        "new_prob": 0.1428480778950118
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.49534375,
+        "failure": 0.50465625,
+        "old_prob": 0.14284924667769902,
+        "new_prob": 0.14283061637144073
+      }
+    ]
+  },
+  {
+    "step": 32,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.4988125,
+        "failure": 0.5011875,
+        "old_prob": 0.14285635681940592,
+        "new_prob": 0.14285178766530066
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.49875,
+        "failure": 0.50125,
+        "old_prob": 0.1428653123759251,
+        "new_prob": 0.14286205464536292
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.4986875,
+        "failure": 0.5013125,
+        "old_prob": 0.1428695401685461,
+        "new_prob": 0.1428699577434761
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.49871875,
+        "failure": 0.50128125,
+        "old_prob": 0.14287160341143695,
+        "new_prob": 0.14286809476402018
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.49875,
+        "failure": 0.50125,
+        "old_prob": 0.14285849295823344,
+        "new_prob": 0.1428586449365171
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.49878125,
+        "failure": 0.50121875,
+        "old_prob": 0.1428480778950118,
+        "new_prob": 0.14285054280400494
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.4988125,
+        "failure": 0.5011875,
+        "old_prob": 0.14283061637144073,
+        "new_prob": 0.14283891744131808
+      }
+    ]
+  },
+  {
+    "step": 34,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.49359375,
+        "failure": 0.50640625,
+        "old_prob": 0.14285178766530066,
+        "new_prob": 0.14283809916422116
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.493625,
+        "failure": 0.506375,
+        "old_prob": 0.14286205464536292,
+        "new_prob": 0.1428403685872772
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.49340625,
+        "failure": 0.50659375,
+        "old_prob": 0.1428699577434761,
+        "new_prob": 0.14286436860515953
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.49346875,
+        "failure": 0.50653125,
+        "old_prob": 0.14286809476402018,
+        "new_prob": 0.14285770898148137
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.49353125,
+        "failure": 0.50646875,
+        "old_prob": 0.1428586449365171,
+        "new_prob": 0.1428472559337796
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.49328125,
+        "failure": 0.50671875,
+        "old_prob": 0.14285054280400494,
+        "new_prob": 0.14286611740332436
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.493,
+        "failure": 0.507,
+        "old_prob": 0.14283891744131808,
+        "new_prob": 0.1428860813247569
+      }
+    ]
+  },
+  {
+    "step": 36,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.50128125,
+        "failure": 0.49871875,
+        "old_prob": 0.14283809916422116,
+        "new_prob": 0.14284637422674518
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.50128125,
+        "failure": 0.49871875,
+        "old_prob": 0.1428403685872772,
+        "new_prob": 0.1428475089382732
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.501375,
+        "failure": 0.498625,
+        "old_prob": 0.14286436860515953,
+        "new_prob": 0.14285078145965663
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.5011875,
+        "failure": 0.4988125,
+        "old_prob": 0.14285770898148137,
+        "new_prob": 0.14286490662293302
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.501125,
+        "failure": 0.49887499999999996,
+        "old_prob": 0.1428472559337796,
+        "new_prob": 0.1428654984241206
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.50090625,
+        "failure": 0.49909375,
+        "old_prob": 0.14286611740332436,
+        "new_prob": 0.14289529329652773
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.50171875,
+        "failure": 0.49828125,
+        "old_prob": 0.1428860813247569,
+        "new_prob": 0.14282963703174362
+      }
+    ]
+  },
+  {
+    "step": 38,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.50153125,
+        "failure": 0.49846875,
+        "old_prob": 0.14284637422674518,
+        "new_prob": 0.1428642363218974
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.50278125,
+        "failure": 0.49721875000000004,
+        "old_prob": 0.1428475089382732,
+        "new_prob": 0.14274834439809642
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.49965625,
+        "failure": 0.50034375,
+        "old_prob": 0.14285078145965663,
+        "new_prob": 0.1430411288577006
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.502375,
+        "failure": 0.497625,
+        "old_prob": 0.14286490662293302,
+        "new_prob": 0.14279489250628496
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.5018125,
+        "failure": 0.4981875,
+        "old_prob": 0.1428654984241206,
+        "new_prob": 0.142847595082683
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.50196875,
+        "failure": 0.49803125000000004,
+        "old_prob": 0.14289529329652773,
+        "new_prob": 0.14284793510894095
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.50153125,
+        "failure": 0.49846875,
+        "old_prob": 0.14282963703174362,
+        "new_prob": 0.14285586772439662
+      }
+    ]
+  },
+  {
+    "step": 40,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.501,
+        "failure": 0.499,
+        "old_prob": 0.1428642363218974,
+        "new_prob": 0.14283951530117422
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.50059375,
+        "failure": 0.49940625000000005,
+        "old_prob": 0.14274834439809642,
+        "new_prob": 0.14281935091259682
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.50078125,
+        "failure": 0.49921875000000004,
+        "old_prob": 0.1430411288577006,
+        "new_prob": 0.14294830549317286
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.5009375,
+        "failure": 0.49906249999999996,
+        "old_prob": 0.14279489250628496,
+        "new_prob": 0.14281065594311002
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.5004375,
+        "failure": 0.4995625,
+        "old_prob": 0.142847595082683,
+        "new_prob": 0.14288350762924512
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.5011875,
+        "failure": 0.4988125,
+        "old_prob": 0.14284793510894095,
+        "new_prob": 0.14281392704546997
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.50046875,
+        "failure": 0.49953125,
+        "old_prob": 0.14285586772439662,
+        "new_prob": 0.14288473767523094
+      }
+    ]
+  },
+  {
+    "step": 42,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.5001875,
+        "failure": 0.4998125,
+        "old_prob": 0.14283951530117422,
+        "new_prob": 0.14281724767584755
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.50003125,
+        "failure": 0.49996874999999996,
+        "old_prob": 0.14281935091259682,
+        "new_prob": 0.1428216701364373
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.49803125,
+        "failure": 0.5019687500000001,
+        "old_prob": 0.14294830549317286,
+        "new_prob": 0.1430718070091698
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.50053125,
+        "failure": 0.49946875,
+        "old_prob": 0.14281065594311002,
+        "new_prob": 0.1427709077560828
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.50009375,
+        "failure": 0.49990625,
+        "old_prob": 0.14288350762924512,
+        "new_prob": 0.14284794663281009
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.500375,
+        "failure": 0.499625,
+        "old_prob": 0.14281392704546997,
+        "new_prob": 0.14278704796214126
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.49971875,
+        "failure": 0.50028125,
+        "old_prob": 0.14288473767523094,
+        "new_prob": 0.14288337282751132
+      }
+    ]
+  },
+  {
+    "step": 44,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.50053125,
+        "failure": 0.49946875,
+        "old_prob": 0.14281724767584755,
+        "new_prob": 0.14283138624911285
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.500125,
+        "failure": 0.49987499999999996,
+        "old_prob": 0.1428216701364373,
+        "new_prob": 0.1428713560923931
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.50078125,
+        "failure": 0.49921875000000004,
+        "old_prob": 0.1430718070091698,
+        "new_prob": 0.1429354298462445
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.50040625,
+        "failure": 0.49959374999999995,
+        "old_prob": 0.1427709077560828,
+        "new_prob": 0.1428198343239952
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.5001875,
+        "failure": 0.4998125,
+        "old_prob": 0.14284794663281009,
+        "new_prob": 0.1428786853231971
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.50103125,
+        "failure": 0.49896874999999996,
+        "old_prob": 0.14278704796214126,
+        "new_prob": 0.14276981425320073
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.50021875,
+        "failure": 0.49978124999999995,
+        "old_prob": 0.14288337282751132,
+        "new_prob": 0.14289349391185657
+      }
+    ]
+  },
+  {
+    "step": 46,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.49925,
+        "failure": 0.50075,
+        "old_prob": 0.14283138624911285,
+        "new_prob": 0.14284343672801547
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.4991875,
+        "failure": 0.5008125,
+        "old_prob": 0.1428713560923931,
+        "new_prob": 0.1428692164254423
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.4991875,
+        "failure": 0.5008125,
+        "old_prob": 0.1429354298462445,
+        "new_prob": 0.14290125330236803
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.499,
+        "failure": 0.501,
+        "old_prob": 0.1428198343239952,
+        "new_prob": 0.14286083986860365
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.4991875,
+        "failure": 0.5008125,
+        "old_prob": 0.1428786853231971,
+        "new_prob": 0.14287288104084434
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.499375,
+        "failure": 0.500625,
+        "old_prob": 0.14276981425320073,
+        "new_prob": 0.1428010611784859
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.4995,
+        "failure": 0.5005,
+        "old_prob": 0.14289349391185657,
+        "new_prob": 0.1428513114562403
+      }
+    ]
+  },
+  {
+    "step": 48,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.50375,
+        "failure": 0.49624999999999997,
+        "old_prob": 0.14284343672801547,
+        "new_prob": 0.14284945446087538
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.503625,
+        "failure": 0.496375,
+        "old_prob": 0.1428692164254423,
+        "new_prob": 0.14287403895344192
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.503875,
+        "failure": 0.49612500000000004,
+        "old_prob": 0.14290125330236803,
+        "new_prob": 0.14286666810419854
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.50375,
+        "failure": 0.49624999999999997,
+        "old_prob": 0.14286083986860365,
+        "new_prob": 0.14285815603116947
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.50365625,
+        "failure": 0.49634375,
+        "old_prob": 0.14287288104084434,
+        "new_prob": 0.14287294760017966
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.50378125,
+        "failure": 0.49621875000000004,
+        "old_prob": 0.1428010611784859,
+        "new_prob": 0.14282534302514732
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.50375,
+        "failure": 0.49624999999999997,
+        "old_prob": 0.1428513114562403,
+        "new_prob": 0.1428533918249878
+      }
+    ]
+  },
+  {
+    "step": 50,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.5006875,
+        "failure": 0.49931250000000005,
+        "old_prob": 0.14284945446087538,
+        "new_prob": 0.14285703496401425
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.50059375,
+        "failure": 0.49940625000000005,
+        "old_prob": 0.14287403895344192,
+        "new_prob": 0.14287804525530945
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.50103125,
+        "failure": 0.49896874999999996,
+        "old_prob": 0.14286666810419854,
+        "new_prob": 0.14283367562063204
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.50071875,
+        "failure": 0.49928125,
+        "old_prob": 0.14285815603116947,
+        "new_prob": 0.1428584797341573
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.500625,
+        "failure": 0.499375,
+        "old_prob": 0.14287294760017966,
+        "new_prob": 0.14287459356367432
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.50078125,
+        "failure": 0.49921875000000004,
+        "old_prob": 0.14282534302514732,
+        "new_prob": 0.14283626120113826
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.50065625,
+        "failure": 0.49934375,
+        "old_prob": 0.1428533918249878,
+        "new_prob": 0.14286190966107443
+      }
+    ]
+  },
+  {
+    "step": 52,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.49975,
+        "failure": 0.50025,
+        "old_prob": 0.14285703496401425,
+        "new_prob": 0.1428529459438064
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.49971875,
+        "failure": 0.50028125,
+        "old_prob": 0.14287804525530945,
+        "new_prob": 0.1428663511661945
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.4995,
+        "failure": 0.5005,
+        "old_prob": 0.14283367562063204,
+        "new_prob": 0.14286446688603924
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.49965625,
+        "failure": 0.50034375,
+        "old_prob": 0.1428584797341573,
+        "new_prob": 0.1428623685590994
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.4998125,
+        "failure": 0.5001875,
+        "old_prob": 0.14287459356367432,
+        "new_prob": 0.1428559250901555
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.49946875,
+        "failure": 0.50053125,
+        "old_prob": 0.14283626120113826,
+        "new_prob": 0.14286865975303287
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.50003125,
+        "failure": 0.49996874999999996,
+        "old_prob": 0.14286190966107443,
+        "new_prob": 0.14282928260167208
+      }
+    ]
+  },
+  {
+    "step": 54,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.502625,
+        "failure": 0.497375,
+        "old_prob": 0.1428529459438064,
+        "new_prob": 0.14285504440047464
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.502625,
+        "failure": 0.497375,
+        "old_prob": 0.1428663511661945,
+        "new_prob": 0.14286174701166868
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.502625,
+        "failure": 0.497375,
+        "old_prob": 0.14286446688603924,
+        "new_prob": 0.14286080487159103
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.502625,
+        "failure": 0.497375,
+        "old_prob": 0.1428623685590994,
+        "new_prob": 0.14285975570812112
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.502625,
+        "failure": 0.497375,
+        "old_prob": 0.1428559250901555,
+        "new_prob": 0.14285653397364917
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.502625,
+        "failure": 0.497375,
+        "old_prob": 0.14286865975303287,
+        "new_prob": 0.14286290130508786
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.502625,
+        "failure": 0.497375,
+        "old_prob": 0.14282928260167208,
+        "new_prob": 0.14284321272940748
+      }
+    ]
+  },
+  {
+    "step": 56,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.4955625,
+        "failure": 0.5044375,
+        "old_prob": 0.14285504440047464,
+        "new_prob": 0.14285609362880874
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.4955625,
+        "failure": 0.5044375,
+        "old_prob": 0.14286174701166868,
+        "new_prob": 0.14285944493440578
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.4955625,
+        "failure": 0.5044375,
+        "old_prob": 0.14286080487159103,
+        "new_prob": 0.14285897386436694
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.4955625,
+        "failure": 0.5044375,
+        "old_prob": 0.14285975570812112,
+        "new_prob": 0.14285844928263197
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.4955625,
+        "failure": 0.5044375,
+        "old_prob": 0.14285653397364917,
+        "new_prob": 0.142856838415396
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.4955625,
+        "failure": 0.5044375,
+        "old_prob": 0.14286290130508786,
+        "new_prob": 0.14286002208111537
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.4955625,
+        "failure": 0.5044375,
+        "old_prob": 0.14284321272940748,
+        "new_prob": 0.14285017779327516
+      }
+    ]
+  },
+  {
+    "step": 58,
+    "rows": [
+      {
+        "attack": "noise",
+        "val_bit_acc": 0.4991875,
+        "failure": 0.5008125,
+        "old_prob": 0.14285609362880874,
+        "new_prob": 0.1428566182429758
+      },
+      {
+        "attack": "blur",
+        "val_bit_acc": 0.4991875,
+        "failure": 0.5008125,
+        "old_prob": 0.14285944493440578,
+        "new_prob": 0.1428582938957743
+      },
+      {
+        "attack": "brightness",
+        "val_bit_acc": 0.4991875,
+        "failure": 0.5008125,
+        "old_prob": 0.14285897386436694,
+        "new_prob": 0.14285805836075488
+      },
+      {
+        "attack": "resize",
+        "val_bit_acc": 0.4991875,
+        "failure": 0.5008125,
+        "old_prob": 0.14285844928263197,
+        "new_prob": 0.1428577960698874
+      },
+      {
+        "attack": "jpeg",
+        "val_bit_acc": 0.4991875,
+        "failure": 0.5008125,
+        "old_prob": 0.142856838415396,
+        "new_prob": 0.14285699063626944
+      },
+      {
+        "attack": "crop",
+        "val_bit_acc": 0.4991875,
+        "failure": 0.5008125,
+        "old_prob": 0.14286002208111537,
+        "new_prob": 0.1428585824691291
+      },
+      {
+        "attack": "occlusion",
+        "val_bit_acc": 0.4991875,
+        "failure": 0.5008125,
+        "old_prob": 0.14285017779327516,
+        "new_prob": 0.14285366032520902
+      }
+    ]
+  }
+]
