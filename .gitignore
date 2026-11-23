@@ -14,3 +14,6 @@ data/
 implementation.md
 implementation_checkin*.md
 *.docx
+
+# Gradio runtime files
+.gradio/
