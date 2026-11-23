@@ -1,0 +1,7 @@
+_base_: hard_fgas.yaml
+
+experiment:
+  name: hard_fgas_unet
+
+model:
+  encoder_type: unet_se

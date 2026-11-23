@@ -66,6 +66,118 @@ class Encoder(nn.Module):
         residual = self.to_residual(self.fuse(x))
         return (cover + residual).clamp(0, 1)
 
+class SqueezeExcitation(nn.Module):
+    """Use global image features to scale each feature channel."""
+
+    def __init__(self, channels, reduction=16):
+        super().__init__()
+        hidden_channels = max(1, channels // reduction)
+        self.gate = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(channels, hidden_channels, kernel_size=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(hidden_channels, channels, kernel_size=1),
+            nn.Sigmoid(),
+        )
+
+    def forward(self, features):
+        return features * self.gate(features)
+
+
+class UNetSEEncoder(nn.Module):
+    """Embed the message at the bottleneck of a three-level U-Net."""
+
+    def __init__(self, message_length, message_grid=16, message_channels=8):
+        super().__init__()
+        self.message_grid = message_grid
+        self.message_channels = message_channels
+
+        self.message_fc = nn.Linear(
+            message_length,
+            message_channels * message_grid * message_grid,
+        )
+
+        self.stem = nn.Sequential(
+            ConvBNReLU(3, 64),
+            SqueezeExcitation(64),
+        )
+        self.down1 = nn.Sequential(
+            ConvBNReLU(64, 64, stride=2),
+            SqueezeExcitation(64),
+        )
+        self.down2 = nn.Sequential(
+            ConvBNReLU(64, 128, stride=2),
+            SqueezeExcitation(128),
+        )
+        self.down3 = nn.Sequential(
+            ConvBNReLU(128, 256, stride=2),
+            SqueezeExcitation(256),
+        )
+
+        self.fuse_message = nn.Sequential(
+            ConvBNReLU(256 + message_channels, 256),
+            SqueezeExcitation(256),
+        )
+
+        self.up2 = nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2)
+        self.decode2 = nn.Sequential(
+            ConvBNReLU(128 + 128, 128),
+            SqueezeExcitation(128),
+        )
+        self.up1 = nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2)
+        self.decode1 = nn.Sequential(
+            ConvBNReLU(64 + 64, 64),
+            SqueezeExcitation(64),
+        )
+        self.up0 = nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2)
+        self.decode0 = nn.Sequential(
+            ConvBNReLU(64 + 64, 64),
+            SqueezeExcitation(64),
+        )
+        self.to_residual = nn.Conv2d(64, 3, kernel_size=1)
+
+    def forward(self, cover, message):
+        # Padding supports image dimensions that are not multiples of eight.
+        height, width = cover.shape[-2:]
+        padded = F.pad(
+            cover,
+            (0, (-width) % 8, 0, (-height) % 8),
+            mode="replicate",
+        )
+
+        skip0 = self.stem(padded)
+        skip1 = self.down1(skip0)
+        skip2 = self.down2(skip1)
+        bottleneck = self.down3(skip2)
+
+        message_map = self.message_fc(2 * message - 1).reshape(
+            message.shape[0],
+            self.message_channels,
+            self.message_grid,
+            self.message_grid,
+        )
+        if message_map.shape[-2:] != bottleneck.shape[-2:]:
+            message_map = F.interpolate(
+                message_map,
+                size=bottleneck.shape[-2:],
+                mode="nearest",
+            )
+
+        features = self.fuse_message(
+            torch.cat([bottleneck, message_map], dim=1)
+        )
+        features = self.decode2(
+            torch.cat([self.up2(features), skip2], dim=1)
+        )
+        features = self.decode1(
+            torch.cat([self.up1(features), skip1], dim=1)
+        )
+        features = self.decode0(
+            torch.cat([self.up0(features), skip0], dim=1)
+        )
+
+        residual = self.to_residual(features)[:, :, :height, :width]
+        return (cover + residual).clamp(0, 1)
 
 class Decoder(nn.Module):
     def __init__(self, message_length, channels=64, blocks=7, pool=1):
@@ -83,22 +195,55 @@ class Decoder(nn.Module):
 
 
 class WatermarkModel(nn.Module):
-    """Encoder + decoder; the distortion is applied by the caller in between."""
+    """Encoder + decoder; the distortion is applied by the caller."""
 
-    def __init__(self, message_length=32, encoder_channels=64, encoder_blocks=4,
-                 decoder_channels=64, decoder_blocks=7, message_embed="spatial",
-                 message_grid=16, message_channels=8, decoder_pool=1):
+    def __init__(
+        self,
+        message_length=32,
+        encoder_channels=64,
+        encoder_blocks=4,
+        decoder_channels=64,
+        decoder_blocks=7,
+        message_embed="spatial",
+        message_grid=16,
+        message_channels=8,
+        decoder_pool=1,
+        encoder_type="hidden",
+    ):
         super().__init__()
         self.message_length = message_length
-        self.encoder = Encoder(message_length, encoder_channels, encoder_blocks,
-                               message_embed, message_grid, message_channels)
-        self.decoder = Decoder(message_length, decoder_channels, decoder_blocks, decoder_pool)
+
+        if encoder_type == "hidden":
+            self.encoder = Encoder(
+                message_length,
+                encoder_channels,
+                encoder_blocks,
+                message_embed,
+                message_grid,
+                message_channels,
+            )
+        elif encoder_type == "unet_se":
+            if message_embed != "spatial":
+                raise ValueError("unet_se requires spatial message embedding.")
+            self.encoder = UNetSEEncoder(
+                message_length,
+                message_grid,
+                message_channels,
+            )
+        else:
+            raise ValueError(f"Unknown encoder_type: {encoder_type!r}")
+
+        self.decoder = Decoder(
+            message_length,
+            decoder_channels,
+            decoder_blocks,
+            decoder_pool,
+        )
 
     def forward(self, cover, message, attack=None):
         watermarked = self.encoder(cover, message)
         attacked = attack(watermarked) if attack is not None else watermarked
         return watermarked, attacked, self.decoder(attacked)
-
 
 def build_model(cfg):
     m = cfg["model"]
@@ -112,4 +257,5 @@ def build_model(cfg):
         message_grid=m.get("message_grid", 16),
         message_channels=m.get("message_channels", 8),
         decoder_pool=m.get("decoder_pool", 1),
+        encoder_type=m.get("encoder_type", "hidden"),
     )
