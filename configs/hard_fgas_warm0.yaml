@@ -1,0 +1,11 @@
+# Fixed warm-up, FGAS: hard_fgas with image-loss weight 0 until the message is
+# learned (see hard_uniform_warm0.yaml).
+# Identical to hard_fgas.yaml except for train.image_loss_weight_start, and to
+# hard_uniform_warm0.yaml except for the fgas block.
+_base_: hard_fgas.yaml
+
+experiment:
+  name: hard_fgas_warm0
+
+train:
+  image_loss_weight_start: 0.0

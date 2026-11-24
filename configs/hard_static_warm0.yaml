@@ -1,0 +1,15 @@
+# Static-schedule baseline: a fixed, non-uniform attack mix from the first
+# post-warm-up batch, with no adaptation. The probabilities are the mean FGAS
+# sampling probabilities over all updates of hard_fgas_s42 and hard_fgas_s46
+# (fgas_history.json, new_prob), fixed before any run of this config. Tests
+# whether FGAS's gain needs the adaptive schedule or only its final mix.
+# The attack warm-up still samples noise/blur/brightness/resize uniformly.
+# Identical to hard_uniform_warm0.yaml except for attacks.initial_probs.
+_base_: hard_uniform_warm0.yaml
+
+experiment:
+  name: hard_static_warm0
+
+attacks:
+  initial_probs: {noise: 0.157, blur: 0.082, brightness: 0.128, resize: 0.073, jpeg: 0.090, crop: 0.345,
+                  occlusion: 0.125}
