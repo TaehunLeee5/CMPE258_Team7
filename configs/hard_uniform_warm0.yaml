@@ -1,0 +1,11 @@
+# Fixed warm-up, control: hard_uniform with image-loss weight 0 until the
+# message is learned. With weight 1, some runs shrank the residual before the
+# decoder picked up any signal and stayed at chance accuracy for good.
+# Identical to hard_uniform.yaml except for train.image_loss_weight_start.
+_base_: hard_uniform.yaml
+
+experiment:
+  name: hard_uniform_warm0
+
+train:
+  image_loss_weight_start: 0.0

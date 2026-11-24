@@ -62,6 +62,9 @@ def test_image_loss_weight_waits_for_trigger_then_ramps():
     assert image_loss_weight(cfg, 5, ramp_start=None) == 1.0
     assert [image_loss_weight(cfg, e, ramp_start=3) for e in (3, 4, 5, 6, 9)] == [5.75, 10.5, 15.25, 20.0, 20.0]
     assert image_loss_weight({**cfg, "image_loss_warmup_epochs": 0}, 1, ramp_start=None) == 20.0
+    zero = {**cfg, "image_loss_weight_start": 0.0}  # warm0 configs: no image penalty until the ramp
+    assert image_loss_weight(zero, 5, ramp_start=None) == 0.0
+    assert [image_loss_weight(zero, e, ramp_start=3) for e in (3, 4, 5, 6)] == [5.0, 10.0, 15.0, 20.0]
 
 
 def test_best_checkpoint_is_scored_on_the_test_set(small_cfg, tmp_path, monkeypatch):
