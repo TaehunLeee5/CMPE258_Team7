@@ -218,9 +218,18 @@ Paired per-seed differences (FGAS − uniform) are in `main_comparison_criterion
 
 **Why: four runs never learned the message.** In `hard_fgas_s43`, `hard_fgas_s44`, `hard_fgas_s45` and `hard_uniform_s43`, bit accuracy stayed at 50% (chance) from epoch 1 to the end. The image-loss ramp was then forced to start at its latest epoch, and the encoder learned to leave images almost unchanged, which is where the high PSNR (61–84 dB) comes from. [per_run.md](results/final/main/per_run.md) shows every run.
 
-- These runs failed during the shared attack warm-up (noise, blur, brightness and resize only), before FGAS had any effect. In the failed FGAS runs, the first FGAS update came only after epoch 10, once the warm-up had already ended without learning the message. Up to that point, uniform and FGAS training run the same code.
-- Runs with the same seed do not train identically on the GPU: `hard_uniform_s44` left chance at epoch 2, but `hard_fgas_s44` did not. Whether a run escapes chance in the warm-up is therefore partly luck, and with n = 5 the 3-vs-1 split between methods cannot be told apart from chance.
+Diagnosis (details and `metrics.csv` evidence in [#12](https://github.com/TaehunLeee5/CMPE258_Team7/issues/12)):
+- **The outcome is decided in epoch 2 of the shared warm-up, before FGAS acts.** During the warm-up (noise, blur, brightness and resize only, image-loss weight 1), uniform and FGAS training run the same code; the first FGAS update comes only after it ends.
+- **Runs that learn make loud changes first.** Their PSNR drops to about 17–21 dB in epoch 2, the decoder picks up the signal, and the image-loss ramp later makes the watermark imperceptible.
+- **Stuck runs go quiet first.** Their PSNR rises to about 34–41 dB in epoch 2. A residual of about 0.01 per pixel is roughly 10× below the noise attack (σ = 0.1), and blur and resize remove it too, so the decoder gets no signal and the image loss keeps shrinking the residual.
+- **It is not specific to FGAS.** Uniform fails too (`hard_uniform_s43`), and same-seed runs diverge on the GPU: `hard_uniform_s44` left chance at epoch 2, `hard_fgas_s44` did not. With n = 5, the 3-vs-1 split between methods cannot be told apart from chance.
 - The variant runs below hit the same failure once in 12 runs. Here it happened in 4 of the 8 new runs.
+
+| | |
+|---|---|
+| ![every run, one dot per seed](results/final/main/figures/per_run_strip.png) | ![uniform vs FGAS, mean ± std](results/final/main/figures/method_bars.png) |
+
+Left: bit accuracy of every run on the DIV2K test set, one dot per seed. 4 of 10 runs (FGAS seeds 43–45, uniform seed 43) never learned the message and sit at about 50% on every attack, including clean images. Among runs that learned it, FGAS is ahead on crop. Right: mean ± std over all five seeds, where the stuck runs dominate the bars.
 
 **Runs that learned the message (post hoc, not pre-registered).**
 
@@ -253,7 +262,7 @@ python scripts/aggregate_seeds.py $R/hard_uniform_s* $R/hard_fgas_s* --no-group 
 python scripts/sweep.py --plot $R/hard_*_s*/sweep.csv --out $F/severity_sweep.png
 python scripts/sweep.py --plot $R/hard_uniform_s4{2,4,5,6}/sweep.csv $R/hard_fgas_s4{2,6}/sweep.csv \
     --out $F/severity_sweep_learned_runs.png
-python scripts/report_figures.py --hard-dir results/final/main --out-dir $F --only method_bars fgas_over_time
+python scripts/report_figures.py --hard-dir results/final/main --out-dir $F --only method_bars per_run_strip fgas_over_time
 python scripts/figure1.py --checkpoint $R/hard_fgas_s42/best.pt --split test --indices 0 150 300 --out $F/figure1.png
 ```
 
