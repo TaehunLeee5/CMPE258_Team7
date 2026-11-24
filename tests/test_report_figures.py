@@ -55,3 +55,32 @@ def test_figures_skip_without_runs(tmp_path, monkeypatch):
     figures.trade_off(tmp_path)
     figures.ablations(tmp_path)
     assert not list(tmp_path.glob("*.png"))
+
+
+def _per_run_csv(path, runs):
+    attacks = figures.HARD_ATTACKS
+    header = ["run", "psnr"] + [f"{a}_bit_acc" for a in attacks]
+    lines = [",".join(header)] + [",".join([name, "36.0"] + [str(acc)] * len(attacks)) for name, acc in runs]
+    path.write_text("\n".join(lines) + "\n")
+
+
+def test_per_run_strip_writes_figure_with_a_stuck_run(tmp_path, monkeypatch):
+    _per_run_csv(tmp_path / "per_run.csv", [("hard_uniform_s42", 0.97), ("hard_uniform_s43", 0.96),
+                                            ("hard_fgas_s42", 0.98), ("hard_fgas_s43", 0.5)])
+    monkeypatch.setattr(figures, "HARD_DIR", tmp_path)
+    figures.per_run_strip(tmp_path)
+    assert (tmp_path / "per_run_strip.png").exists()
+
+
+def test_per_run_strip_handles_unknown_group_names(tmp_path, monkeypatch):
+    _per_run_csv(tmp_path / "per_run.csv", [("hard_uniform_warm0_s42", 0.97), ("hard_static_warm0_s42", 0.95),
+                                            ("hard_fgas_warm0_s42", 0.98), ("hard_fgas_warm0_s43", 0.97)])
+    monkeypatch.setattr(figures, "HARD_DIR", tmp_path)
+    figures.per_run_strip(tmp_path)
+    assert (tmp_path / "per_run_strip.png").exists()
+
+
+def test_per_run_strip_skips_missing_csv(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(figures, "HARD_DIR", tmp_path / "none")
+    figures.per_run_strip(tmp_path)
+    assert "skipped:" in capsys.readouterr().out and not list(tmp_path.glob("*.png"))
