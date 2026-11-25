@@ -16,7 +16,8 @@ Figures (hardened benchmark, from --hard-dir, default results/checkin3; skipped 
                        (main_comparison.csv from scripts/aggregate_seeds.py)
   per_run_strip        bit accuracy of every run per attack, one dot per seed, median per method
                        (per_run.csv from scripts/aggregate_seeds.py --no-group)
-  fgas_over_time       FGAS sampling probabilities over training (runs/hard_fgas_s42/fgas_history.json)
+  fgas_over_time       FGAS sampling probabilities over training (runs/hard_fgas_s42/fgas_history.json,
+                       or runs/hard_fgas_warm0_s42 in the fixed-warm-up results)
   trade_off            worst-case and mean attacked accuracy vs test PSNR across image-loss
                        weights 100 / 200 / 400, one line per method; weight 200 = runs/hard_<m>_s*
                        (mean +- std over seeds), 100 / 400 = <variants-dir>/runs/hard_<m>_w<w>_s*
@@ -45,7 +46,8 @@ sys.path.insert(0, str(ROOT / "src"))
 
 RESULTS = ROOT / "results"
 ATTACKS = ["noise", "blur", "brightness", "resize"]
-COLORS = {"bit": "#2b6cb0", "msg": "#dd8a2c", "uniform": "#9aa5b1", "fgas": "#c0392b", "psnr": "#2f855a"}
+COLORS = {"bit": "#2b6cb0", "msg": "#dd8a2c", "uniform": "#9aa5b1", "fgas": "#c0392b", "psnr": "#2f855a",
+          "static": "#2b6cb0"}
 plt.rcParams.update({"font.size": 10, "axes.spines.top": False, "axes.spines.right": False})
 
 
@@ -246,7 +248,12 @@ VARIANTS_DIR = RESULTS / "final" / "variants"
 WEIGHTS = (100, 200, 400)
 ABLATIONS = {"floor002": "floor 0.02", "floor010": "floor 0.10", "int1": "update every epoch",
              "int5": "update every 5 epochs", "p2": "power 2", "lossweight": "loss weighting"}
-METHODS = {"hard_uniform": ("Uniform", COLORS["uniform"]), "hard_fgas": ("FGAS", COLORS["fgas"])}
+METHODS = {"hard_uniform": ("Uniform", COLORS["uniform"]), "hard_fgas": ("FGAS", COLORS["fgas"]),
+           # fixed warm-up (image-loss weight 0 until the message is learned)
+           "hard_uniform_warm0": ("Uniform", COLORS["uniform"]),
+           "hard_static_warm0": ("Static mix", COLORS["static"]),
+           "hard_fgas_warm0": ("FGAS", COLORS["fgas"])}
+FGAS_RUNS = ("hard_fgas_s42", "hard_fgas_warm0_s42")  # fgas_over_time: first one present in --hard-dir
 HARD_ATTACKS = ["clean", "noise", "blur", "brightness", "resize", "jpeg", "crop", "occlusion", "jpeg_real", "combo"]
 
 
@@ -280,7 +287,8 @@ def method_bars(out_dir):
     ax.axvline(len([a for a in names if a not in ("jpeg_real", "combo")]) - 0.5, color="#999999", ls=":", lw=1)
     ax.set_ylabel("Bit accuracy (%)")
     ax.set_ylim(50, 101)
-    ax.set_title("DIV2K test set: uniform vs FGAS (training attacks | evaluation-only attacks)", fontsize=10)
+    title = " vs ".join(METHODS[m][0] for m in methods)
+    ax.set_title(f"DIV2K test set: {title} (training attacks | evaluation-only attacks)", fontsize=10)
     ax.legend(fontsize=8, frameon=False, loc="upper center", bbox_to_anchor=(0.5, -0.1), ncol=len(methods))
     _save(fig, out_dir, "method_bars")
 
@@ -329,7 +337,8 @@ def per_run_strip(out_dir):
     _save(fig, out_dir, "per_run_strip")
 
 
-def fgas_over_time(out_dir, run="hard_fgas_s42"):
+def fgas_over_time(out_dir, run=None):
+    run = run or next((r for r in FGAS_RUNS if (HARD_DIR / "runs" / r).exists()), FGAS_RUNS[0])
     path = HARD_DIR / "runs" / run / "fgas_history.json"
     if _missing(path):
         return
