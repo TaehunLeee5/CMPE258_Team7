@@ -14,6 +14,8 @@ Figures (DIV2K baseline):
 Figures (hardened benchmark, from --hard-dir, default results/checkin3; skipped if missing):
   method_bars          uniform vs FGAS bit accuracy per attack, mean +- std over seeds
                        (main_comparison.csv from scripts/aggregate_seeds.py)
+  per_run_strip        bit accuracy of every run per attack, one dot per seed, median per method
+                       (per_run.csv from scripts/aggregate_seeds.py --no-group)
   fgas_over_time       FGAS sampling probabilities over training (runs/hard_fgas_s42/fgas_history.json)
   trade_off            worst-case and mean attacked accuracy vs test PSNR across image-loss
                        weights 100 / 200 / 400, one line per method; weight 200 = runs/hard_<m>_s*
@@ -27,6 +29,7 @@ Figures (hardened benchmark, from --hard-dir, default results/checkin3; skipped 
 import argparse
 import csv
 import json
+import re
 import statistics
 import sys
 from pathlib import Path
@@ -282,6 +285,50 @@ def method_bars(out_dir):
     _save(fig, out_dir, "method_bars")
 
 
+SEED_SUFFIX = re.compile(r"_s(\d+)$")  # same rule as scripts/aggregate_seeds.py
+FALLBACK_COLORS = ["#2b6cb0", "#dd8a2c", "#2f855a", "#805ad5", "#b7791f", "#319795"]
+
+
+def per_run_strip(out_dir):
+    """Bit accuracy of every run per attack, one dot per seed, grouped by run name minus `_sNN`."""
+    path = HARD_DIR / "per_run.csv"
+    if _missing(path):
+        return
+    rows = _read_csv(path)
+    groups = {}
+    for row in rows:
+        groups.setdefault(SEED_SUFFIX.sub("", row["run"]), []).append(row)
+    rank = ("uniform", "static", "fgas")  # baselines first, FGAS last; anything else after
+    groups = dict(sorted(groups.items(), key=lambda kv: next(
+        (i for i, word in enumerate(rank) if word in kv[0]), len(rank))))
+    names = [a for a in HARD_ATTACKS if f"{a}_bit_acc" in rows[0]]
+    fallback = iter(FALLBACK_COLORS * 2)
+    style = {g: METHODS.get(g, (g, None)) for g in groups}
+    style = {g: (label, color or next(fallback)) for g, (label, color) in style.items()}
+    fig, ax = plt.subplots(figsize=(11, 4))
+    w = 0.7 / max(len(groups), 1)
+    for k, (group, members) in enumerate(groups.items()):
+        label, color = style[group]
+        offset = (k - (len(groups) - 1) / 2) * w
+        for i, attack in enumerate(names):
+            values = [100 * float(r[f"{attack}_bit_acc"]) for r in members]
+            jitter = [(j - (len(values) - 1) / 2) * w / max(len(values), 2) * 0.8 for j in range(len(values))]
+            ax.scatter([i + offset + d for d in jitter], values, s=16, color=color, alpha=0.8, linewidths=0,
+                       label=f"{label} (n={len(members)})" if i == 0 else None, zorder=3)
+            ax.hlines(statistics.median(values), i + offset - w / 2, i + offset + w / 2, color=color, lw=2,
+                      zorder=4)
+    ax.axhline(50, color="#888888", ls="--", lw=1)
+    ax.text(-0.45, 49.5, "chance", ha="left", va="top", fontsize=8, color="#666666")
+    ax.axvline(len([a for a in names if a not in ("jpeg_real", "combo")]) - 0.5, color="#999999", ls=":", lw=1)
+    ax.set_xticks(range(len(names)), names)
+    ax.set_xlim(-0.5, len(names) - 0.5)
+    ax.set_ylim(45, 101)
+    ax.set_ylabel("Bit accuracy (%)")
+    ax.set_title("DIV2K test set: every run (one dot per seed)", fontsize=10)
+    ax.legend(fontsize=8, frameon=False, loc="upper center", bbox_to_anchor=(0.5, -0.1), ncol=len(groups))
+    _save(fig, out_dir, "per_run_strip")
+
+
 def fgas_over_time(out_dir, run="hard_fgas_s42"):
     path = HARD_DIR / "runs" / run / "fgas_history.json"
     if _missing(path):
@@ -451,6 +498,7 @@ def new_attack_examples(out_dir, run="hard_uniform_s42", index=10):
 
 FIGURES = {"architecture": architecture, "robustness": robustness, "training_curves": training_curves,
            "fgas_probs": fgas_probs, "attack_examples": attack_examples, "method_bars": method_bars,
+           "per_run_strip": per_run_strip,
            "fgas_over_time": fgas_over_time, "trade_off": trade_off,
            "ablations": ablations, "new_attack_examples": new_attack_examples}
 

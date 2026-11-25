@@ -1,0 +1,10 @@
+# FGAS ablation (single seed, exploratory): failure-weighted loss with the
+# fixed warm-up. Compared with hard_uniform_warm0 and hard_fgas_warm0 at the
+# same seed. Identical to hard_fgas_warm0.yaml except for fgas.mode.
+_base_: hard_fgas_warm0.yaml
+
+experiment:
+  name: hard_fgas_lossweight_warm0
+
+fgas:
+  mode: loss_weight
