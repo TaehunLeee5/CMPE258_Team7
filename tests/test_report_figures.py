@@ -84,3 +84,19 @@ def test_per_run_strip_skips_missing_csv(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(figures, "HARD_DIR", tmp_path / "none")
     figures.per_run_strip(tmp_path)
     assert "skipped:" in capsys.readouterr().out and not list(tmp_path.glob("*.png"))
+
+
+def test_warm0_groups_get_bars_and_fgas_history(tmp_path, monkeypatch):
+    groups = ("hard_uniform_warm0", "hard_static_warm0", "hard_fgas_warm0")
+    lines = ["group,metric,mean,std,n"]
+    for group in groups:
+        lines += [f"{group},{a}_bit_acc,0.97,0.01,5" for a in figures.HARD_ATTACKS] + [f"{group},psnr,35.5,0.3,5"]
+    (tmp_path / "main_comparison.csv").write_text("\n".join(lines) + "\n")
+    run = tmp_path / "runs" / "hard_fgas_warm0_s42"  # no hard_fgas_s42 here: the warm0 run is used
+    run.mkdir(parents=True)
+    rows = [{"attack": a, "old_prob": 0.5, "new_prob": 0.5} for a in ("noise", "crop")]
+    run.joinpath("fgas_history.json").write_text(json.dumps([{"step": 2, "rows": rows}, {"step": 4, "rows": rows}]))
+    monkeypatch.setattr(figures, "HARD_DIR", tmp_path)
+    figures.method_bars(tmp_path)
+    figures.fgas_over_time(tmp_path)
+    assert (tmp_path / "method_bars.png").exists() and (tmp_path / "fgas_over_time.png").exists()

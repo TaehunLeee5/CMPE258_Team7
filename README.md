@@ -266,6 +266,129 @@ python scripts/report_figures.py --hard-dir results/final/main --out-dir $F --on
 python scripts/figure1.py --checkpoint $R/hard_fgas_s42/best.pt --split test --indices 0 150 300 --out $F/figure1.png
 ```
 
+### Fixed warm-up: uniform vs static mix vs FGAS
+
+This is a **new, separately labelled experiment** run after the diagnosis above. The pre-registered result in the previous subsection stays as reported. Results are in [results/final/warm0/](results/final/warm0/).
+
+**The change:**
+- The image-loss weight is **0** during the attack warm-up (`train.image_loss_weight_start: 0.0`), instead of 1. Nothing pushes the residual towards zero before the message is learned, so the "quiet" collapse ([#12](https://github.com/TaehunLeee5/CMPE258_Team7/issues/12)) cannot start.
+- Everything else is unchanged: after the warm-up, the weight ramps to 200 as before.
+- Configs: [hard_uniform_warm0.yaml](configs/hard_uniform_warm0.yaml) and [hard_fgas_warm0.yaml](configs/hard_fgas_warm0.yaml). Each differs from its parent only in that key, and they differ from each other only in `fgas` (checked by `tests/test_configs.py`).
+
+**Static-mix baseline** ([hard_static_warm0.yaml](configs/hard_static_warm0.yaml), [#19](https://github.com/TaehunLeee5/CMPE258_Team7/issues/19)):
+- Same as `hard_uniform_warm0`, but after the warm-up it samples a **fixed** non-uniform attack mix: noise 0.157, blur 0.082, brightness 0.128, resize 0.073, jpeg 0.090, **crop 0.345**, occlusion 0.125.
+- This is the mean FGAS distribution of `hard_fgas_s42` and `hard_fgas_s46`, fixed before any run.
+- It tests whether FGAS needs to *adapt* during training, or only to arrive at the right mix.
+
+**Protocol:**
+- Fixed before launch: seeds 42–46 for all three methods; the same pre-registered criterion and thresholds as the original comparison (uniform vs FGAS); FGAS vs static is descriptive only.
+- A development check on the seeds that had collapsed (43–45, 12 epochs) passed before the official runs ([#13](https://github.com/TaehunLeee5/CMPE258_Team7/issues/13)).
+- All 15 runs trained for 60 epochs on a Colab Tesla T4:
+  - seeds 42–44 from commit `c62de5d`;
+  - seeds 45–46 from commit `dede946`.
+
+  The two commits differ only by the optional U-Net encoder. The default model builds identical weights from the same seed in both.
+- Severity sweeps also ran on a Colab T4.
+
+**All 15 runs learned the message:** clean bit accuracy ≥ 99.6% and PSNR 34.7–36.7 dB. No run stayed at chance.
+
+| | Uniform | Static mix | FGAS |
+|---|---|---|---|
+| **Worst attack (crop) bit accuracy** | 86.52 ± 2.38% | **94.07 ± 1.20%** | **94.05 ± 0.52%** |
+| Crop full-message accuracy | 14.95 ± 7.32% | 50.45 ± 5.65% | 47.55 ± 1.97% |
+| Mean attacked bit accuracy (7 training attacks) | 97.28 ± 0.38% | 98.29 ± 0.36% | 98.36 ± 0.06% |
+| Full-message accuracy (mean over the 7 attacks) | 73.93 ± 2.96% | 77.69 ± 3.16% | 78.31 ± 1.61% |
+| Noise full-message accuracy | 63.20 ± 9.07% | 57.45 ± 9.14% | 59.95 ± 10.19% |
+| PSNR | 36.17 ± 0.47 dB | 35.22 ± 0.30 dB | 35.37 ± 0.46 dB |
+| Clean bit accuracy | 99.89% | 99.86% | 99.89% |
+
+Mean ± sample std over 5 seeds, DIV2K test set ([main_comparison.md](results/final/warm0/main_comparison.md), [per_run.md](results/final/warm0/per_run.md)).
+
+**Pre-registered criterion (uniform vs FGAS): not met, on image quality only** ([main_comparison_criterion.json](results/final/warm0/main_comparison_criterion.json)).
+
+| Check | Required | Result | Pass |
+|---|---|---|---|
+| Worst-case bit accuracy | ≥ +2 pp | **+7.53 pp** | yes |
+| PSNR | within 0.5 dB | **−0.80 dB** | **no** |
+| Mean attacked bit accuracy | not more than 0.5 pp lower | +1.08 pp | yes |
+| Clean bit accuracy | ≥ 98% | 99.89% | yes |
+
+**Paired per-seed differences, FGAS − uniform:**
+
+| Seed | 42 | 43 | 44 | 45 | 46 | Mean ± std |
+|---|---|---|---|---|---|---|
+| Worst case (pp) | +9.52 | +7.16 | +7.41 | +4.52 | +9.05 | **+7.53 ± 1.97** |
+| Mean attacked (pp) | +1.24 | +1.27 | +0.99 | +0.54 | +1.37 | +1.08 ± 0.33 |
+| Full-message (pp) | +3.07 | +8.61 | +3.32 | +0.14 | +6.79 | +4.39 ± 3.33 |
+| PSNR (dB) | −0.51 | −1.40 | +0.37 | −1.41 | −1.08 | −0.80 ± 0.75 |
+
+FGAS has the better worst case on **5 of 5** seeds, and a higher mean attacked and full-message accuracy on every seed. It costs 0.80 dB of PSNR on average, which exceeds the 0.5 dB limit, so the criterion fails.
+
+For scale (post hoc, from the single-seed trade-off runs below, original warm-up): uniform sampling gains about 1.8 pp of worst-case accuracy per dB of PSNR it gives up (weight 200 → 100: +4.05 pp for −2.27 dB). Bought that way, 0.8 dB would be worth roughly 1.4 pp, against FGAS's +7.5 pp. This is a rough comparison, not a test.
+
+**FGAS vs the static mix** ([static_vs_fgas_criterion.json](results/final/warm0/static_vs_fgas_criterion.json); descriptive, as fixed in advance):
+- Paired FGAS − static: worst case −0.01 ± 1.03 pp (FGAS better on 1 of 5 seeds), mean attacked +0.07 ± 0.32 pp, full-message +0.62 ± 3.34 pp, PSNR +0.15 ± 0.50 dB.
+- The two are **indistinguishable**. The gain over uniform comes from the final attack mix (much more crop), not from adapting it during training.
+- The PSNR cost also comes from the mix: the static mix is 0.95 dB below uniform.
+- What FGAS contributes is **finding** that mix automatically, from validation failures, without knowing in advance which attack is hardest. The static mix used here was only available because FGAS had found it.
+
+**Severity sweep** ([severity_sweep.png](results/final/warm0/figures/severity_sweep.png), mean ± std over 5 seeds):
+
+| Attack | Uniform | Static mix | FGAS |
+|---|---|---|---|
+| Crop, keep 50% | 71.5% | 81.9% | 81.3% |
+| Crop, keep 35% | 57.1% | 63.4% | 62.7% |
+| Noise σ = 0.2 | 87.0% | 84.2% | 85.5% |
+| Occlusion 55% | 87.8% | 88.8% | 88.7% |
+| Real JPEG Q10 | 73.1% | 72.9% | 71.0% |
+
+The crop gain holds beyond the training strength. The crop-heavy mixes (static and FGAS) are 1.5–2.8 pp behind on strong noise.
+
+| | |
+|---|---|
+| ![uniform vs static vs FGAS, mean ± std](results/final/warm0/figures/method_bars.png) | ![every run, one dot per seed](results/final/warm0/figures/per_run_strip.png) |
+| ![severity sweep](results/final/warm0/figures/severity_sweep.png) | ![FGAS probabilities, seed 42](results/final/warm0/figures/fgas_over_time.png) |
+
+**Sampling vs loss weighting** ([#15](https://github.com/TaehunLeee5/CMPE258_Team7/issues/15); seed 42 only, exploratory; [sampling_vs_lossweight.md](results/final/warm0/sampling_vs_lossweight.md)).
+
+`hard_fgas_lossweight_warm0` keeps uniform sampling and instead multiplies each attack's message loss by K · p_a, as Group DRO re-weights the training loss. At the end of training, crop's loss weight was 2.53 and resize's 0.49.
+
+| Seed 42, fixed warm-up | Worst case (crop) | Mean attacked | Full-message | PSNR |
+|---|---|---|---|---|
+| Uniform | 84.00% | 97.15% | 76.61% | 35.87 dB |
+| FGAS, loss weighting | 91.20% | 97.67% | 74.07% | 35.39 dB |
+| FGAS, sampling (default) | 93.52% | 98.39% | 79.68% | 35.36 dB |
+
+On this seed:
+- both ways of using the FGAS signal improve the worst case over uniform;
+- re-weighting **sampling** does better than re-weighting the **loss**, at the same PSNR.
+
+With n = 1 this is a direction, not a result.
+
+Reproduce: in [notebooks/checkin3_colab.ipynb](notebooks/checkin3_colab.ipynb), add the jobs below, run them, then run the sweep cell. Then build the tables and figures locally:
+
+```python
+for seed in (42, 43, 44, 45, 46):
+    ALL_JOBS[f'hard_uniform_warm0_s{seed}'] = ('configs/hard_uniform_warm0.yaml', seed, [])
+    ALL_JOBS[f'hard_fgas_warm0_s{seed}'] = ('configs/hard_fgas_warm0.yaml', seed, [])
+    ALL_JOBS[f'hard_static_warm0_s{seed}'] = ('configs/hard_static_warm0.yaml', seed, [])
+ALL_JOBS['hard_fgas_lossweight_warm0_s42'] = ('configs/hard_fgas_lossweight_warm0.yaml', 42, [])
+```
+
+```bash
+W=results/final/warm0; R=$W/runs
+python scripts/aggregate_seeds.py $R/hard_uniform_warm0_s* $R/hard_static_warm0_s* $R/hard_fgas_warm0_s* \
+    --out $W/main_comparison --criterion hard_uniform_warm0 hard_fgas_warm0
+python scripts/aggregate_seeds.py $R/hard_static_warm0_s* $R/hard_fgas_warm0_s* --out $W/static_vs_fgas \
+    --criterion hard_static_warm0 hard_fgas_warm0
+python scripts/aggregate_seeds.py $R/hard_uniform_warm0_s* $R/hard_static_warm0_s* $R/hard_fgas_warm0_s* \
+    --no-group --out $W/per_run
+python scripts/aggregate_seeds.py $R/hard_uniform_warm0_s42 $R/hard_fgas_warm0_s42 $R/hard_fgas_lossweight_warm0_s42 \
+    --no-group --out $W/sampling_vs_lossweight
+python scripts/sweep.py --plot $R/hard_{uniform,static,fgas}_warm0_s*/sweep.csv --out $W/figures/severity_sweep.png
+python scripts/report_figures.py --hard-dir $W --out-dir $W/figures --only method_bars per_run_strip fgas_over_time
+```
+
 ### FGAS variants and image-quality trade-off
 
 All runs are seed 42 on a Colab Tesla T4, use the hardened benchmark above (60 epochs, same warm-ups) and are scored on the DIV2K test set. Results are in [results/final/variants/](results/final/variants/). These runs are **single-seed and exploratory**; they are not part of the pre-registered criterion. "Full-message" is the mean over the 7 training attacks of the fraction of images with all 32 bits correct.
@@ -283,7 +406,7 @@ All runs are seed 42 on a Colab Tesla T4, use the hardened benchmark above (60 e
 
 - FGAS's worst-case bit accuracy is 4.4 to 7.4 pp higher at every weight. At weight 400 FGAS also has the higher PSNR (+0.21 dB), so the gain is not explained by a weaker image-quality constraint.
 - Mean attacked bit accuracy is higher for FGAS at every weight (+0.3 to +0.8 pp).
-- Full-message accuracy is not: FGAS is +0.1 pp at weight 100 but −1.0 pp at 200 and −3.1 pp at 400. The cost is on noise, where FGAS samples less: noise full-message accuracy is 33.25% vs. 48.00% at weight 400.
+- Full-message accuracy is not: FGAS is +0.1 pp at weight 100 but −1.0 pp at 200 and −3.1 pp at 400. The cost is concentrated on noise: noise full-message accuracy is 33.25% vs. 48.00% at weight 400. This is not explained by fewer noise batches: at weights 200 and 400, FGAS sampled noise slightly *more* often than uniform (mean probability 0.16 and 0.18 vs. 0.14, from `fgas_history.json`). The cause is still open.
 - Weight 400 raised PSNR to about 38 dB without collapse for either method.
 
 **Ablations.** Each config changes one FGAS setting from [configs/hard_fgas.yaml](configs/hard_fgas.yaml) (checked by `tests/test_configs.py`).
@@ -297,11 +420,11 @@ All runs are seed 42 on a Colab Tesla T4, use the hardened benchmark above (60 e
 | update every epoch | `hard_fgas_int1` | 35.30 | 94.80% | 98.50% | 79.29% |
 | update every 5 epochs | `hard_fgas_int5` | 35.87 | 93.10% | 98.20% | 77.54% |
 | power 2 | `hard_fgas_p2` | 35.26 | 94.52% | 98.31% | 78.25% |
-| loss weighting (`fgas.mode: loss_weight`) | `hard_fgas_lossweight` | rerun in progress | | | |
+| loss weighting (`fgas.mode: loss_weight`) | `hard_fgas_lossweight` | did not learn the message; rerun with the fixed warm-up, see above | | | |
 
 - Every FGAS variant beats uniform on the worst case by 5.9 to 8.5 pp. The variants differ from each other by at most 2.6 pp on one seed, so they should not be ranked on these numbers.
 - The higher floor (0.10, closer to uniform sampling) gives the smallest gain. Four of the five variants have 0.27 to 0.44 dB lower PSNR than default FGAS; updating every 5 epochs is 0.17 dB higher.
-- The first loss-weighting run never learned the message: bit accuracy stayed at 50% from epoch 1, during the shared attack warm-up when every loss weight is still 1, so loss weighting never took effect. Same-seed runs differ on the GPU, and this was the only one of 12 that did not leave chance within the warm-up. It is kept as `runs/hard_fgas_lossweight_failed_s42` and is being rerun.
+- The first loss-weighting run never learned the message: bit accuracy stayed at 50% from epoch 1, during the shared attack warm-up when every loss weight is still 1, so loss weighting never took effect. Same-seed runs differ on the GPU, and this was the only one of 12 that did not leave chance within the warm-up. It is kept as `runs/hard_fgas_lossweight_failed_s42`. The rerun used the fixed warm-up and is compared with uniform and FGAS under the same warm-up in "Sampling vs loss weighting" above.
 
 | | |
 |---|---|

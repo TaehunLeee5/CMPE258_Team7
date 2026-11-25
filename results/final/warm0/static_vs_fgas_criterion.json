@@ -1,0 +1,87 @@
+{
+  "uniform": "hard_static_warm0",
+  "fgas": "hard_fgas_warm0",
+  "delta_worst_pp": -0.014062499999978328,
+  "delta_psnr_db": 0.1477055969238279,
+  "delta_mean_attacked_pp": 0.07433035714285996,
+  "delta_mean_msg_pp": 0.6214285714285728,
+  "fgas_clean_bit_acc": 0.998875,
+  "checks": {
+    "worst_case_gain_ge_2pp": false,
+    "psnr_within_0.5db": true,
+    "mean_attacked_drop_le_0.5pp": true,
+    "clean_ge_98": true
+  },
+  "met": false,
+  "paired": {
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "units": "accuracies in pp, psnr in dB; FGAS - uniform",
+    "per_seed": [
+      {
+        "seed": 42,
+        "worst_bit_acc": -0.09375000000000355,
+        "mean_attacked_bit_acc": 0.1383928571428661,
+        "mean_attacked_msg_acc": 1.8571428571428683,
+        "psnr": 0.3140086364746111
+      },
+      {
+        "seed": 43,
+        "worst_bit_acc": -0.4375000000000018,
+        "mean_attacked_bit_acc": -0.007812499999992895,
+        "mean_attacked_msg_acc": 2.214285714285713,
+        "psnr": -0.747321929931644
+      },
+      {
+        "seed": 44,
+        "worst_bit_acc": -0.7421874999999911,
+        "mean_attacked_bit_acc": -0.11383928571430113,
+        "mean_attacked_msg_acc": -0.39285714285713924,
+        "psnr": 0.3848896789550835
+      },
+      {
+        "seed": 45,
+        "worst_bit_acc": -0.5703125000000031,
+        "mean_attacked_bit_acc": -0.23660714285713702,
+        "mean_attacked_msg_acc": -4.642857142857149,
+        "psnr": 0.46637451171875455
+      },
+      {
+        "seed": 46,
+        "worst_bit_acc": 1.773437499999997,
+        "mean_attacked_bit_acc": 0.5915178571428426,
+        "mean_attacked_msg_acc": 4.07142857142857,
+        "psnr": 0.3205770874023415
+      }
+    ],
+    "summary": {
+      "worst_bit_acc": {
+        "mean": -0.014062500000000533,
+        "std": 1.0271788722257047,
+        "n": 5
+      },
+      "mean_attacked_bit_acc": {
+        "mean": 0.07433035714285552,
+        "std": 0.3203218328655235,
+        "n": 5
+      },
+      "mean_attacked_msg_acc": {
+        "mean": 0.6214285714285728,
+        "std": 3.343208162278644,
+        "n": 5
+      },
+      "psnr": {
+        "mean": 0.1477055969238293,
+        "std": 0.5040887057450059,
+        "n": 5
+      }
+    },
+    "fgas_better_worst_case": 1,
+    "num_paired_seeds": 5
+  }
+}

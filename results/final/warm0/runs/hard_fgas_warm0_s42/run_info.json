@@ -1,0 +1,11 @@
+{
+  "git_sha": "c62de5da0f7335c31f9edac3d7c86a10ae049a0a",
+  "seed": 42,
+  "python": "3.13.16",
+  "platform": "Linux-6.6.159+-x86_64-with-glibc2.39",
+  "torch": "2.14.1+cu130",
+  "cuda": "13.0",
+  "device": "cuda",
+  "gpu": "Tesla T4",
+  "started_at": "2026-11-25 07:05:53"
+}
