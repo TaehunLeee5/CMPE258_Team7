@@ -1,0 +1,57 @@
+{
+  "epoch": 44,
+  "split": "test",
+  "attacks": {
+    "clean": {
+      "bit_acc": 0.996328125,
+      "msg_acc": 0.9425
+    },
+    "noise": {
+      "bit_acc": 0.974921875,
+      "msg_acc": 0.5125
+    },
+    "blur": {
+      "bit_acc": 0.9934375,
+      "msg_acc": 0.9
+    },
+    "brightness": {
+      "bit_acc": 0.980625,
+      "msg_acc": 0.8175
+    },
+    "resize": {
+      "bit_acc": 0.99515625,
+      "msg_acc": 0.92
+    },
+    "jpeg": {
+      "bit_acc": 0.9909375,
+      "msg_acc": 0.8475
+    },
+    "crop": {
+      "bit_acc": 0.92328125,
+      "msg_acc": 0.42
+    },
+    "occlusion": {
+      "bit_acc": 0.98140625,
+      "msg_acc": 0.6925
+    },
+    "jpeg_real": {
+      "bit_acc": 0.986796875,
+      "msg_acc": 0.78
+    },
+    "combo": {
+      "bit_acc": 0.983671875,
+      "msg_acc": 0.7275
+    }
+  },
+  "image_quality": {
+    "psnr": 35.177437744140626,
+    "ssim": 0.9750217533111573
+  },
+  "worst_case": {
+    "attack": "crop",
+    "bit_acc": 0.92328125
+  },
+  "mean_attacked_bit_acc": 0.9771093750000001,
+  "mean_attacked_msg_acc": 0.7300000000000001,
+  "num_samples": 400
+}
