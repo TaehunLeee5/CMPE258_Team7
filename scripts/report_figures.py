@@ -47,7 +47,7 @@ sys.path.insert(0, str(ROOT / "src"))
 RESULTS = ROOT / "results"
 ATTACKS = ["noise", "blur", "brightness", "resize"]
 COLORS = {"bit": "#2b6cb0", "msg": "#dd8a2c", "uniform": "#9aa5b1", "fgas": "#c0392b", "psnr": "#2f855a",
-          "static": "#2b6cb0"}
+          "static": "#2f855a"}  # static matches scripts/sweep.py's colour for hard_static_*
 plt.rcParams.update({"font.size": 10, "axes.spines.top": False, "axes.spines.right": False})
 
 
