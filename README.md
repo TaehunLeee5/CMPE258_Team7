@@ -9,6 +9,8 @@ A HiDDeN-inspired neural watermarking prototype. An **encoder** hides a 32-bit m
 
 Research question: *does dynamically allocating more training samples to the model's weakest distortions improve worst-case watermark recovery compared with uniform sampling?*
 
+**Main result** ([details](#final-results)): over 5 seeds, FGAS raises worst-case bit accuracy (crop) from 86.5% to 94.1% (+7.5 pp, better on every seed) and is also ahead on average and full-message accuracy, at 0.8 dB lower PSNR (35.4 vs 36.2 dB).
+
 ## Pipeline
 
 ```
@@ -86,7 +88,7 @@ python scripts/train.py --config configs/hard_uniform.yaml --set experiment.name
 python scripts/train.py --config configs/hard_fgas.yaml --set experiment.name=hard_fgas_s42
 python scripts/evaluate.py --checkpoint runs/hard_uniform_s42/best.pt --split test --out results/hard_test.json
 
-# Mean +- std over seeds and the pre-registered criterion check
+# Mean +- std over seeds and the success-test check
 python scripts/aggregate_seeds.py runs/hard_uniform_s* runs/hard_fgas_s*     --out results/checkin3/main_comparison --criterion hard_uniform hard_fgas
 
 # Severity sweep on the DIV2K test set (attacks.sweep) and its figure
@@ -162,7 +164,7 @@ Calibration findings from development runs:
 - With 25-50% occlusion during training, bit accuracy stayed at chance and the message was never learned.
 - With all seven attacks from the first batch, whether training ever left chance accuracy varied between otherwise identical runs. The attack warm-up fixed both problems.
 
-**Results on the DIV2K test set** (seed 42, Tesla T4, `results/checkin3/`). The pre-registered criterion was worst-case bit accuracy +2 pp or more, PSNR within 0.5 dB, mean attacked accuracy no more than 0.5 pp lower, and clean accuracy ≥ 98%.
+**Results on the DIV2K test set** (seed 42, Tesla T4, `results/checkin3/`). The success test, set before the runs, was worst-case bit accuracy +2 pp or more, PSNR within 0.5 dB, mean attacked accuracy no more than 0.5 pp lower, and clean accuracy ≥ 98%.
 
 | | Uniform | FGAS |
 |---|---|---|
@@ -174,7 +176,7 @@ Calibration findings from development runs:
 | Noise σ=0.1 | 98.92% | 97.87% |
 | Real JPEG Q50 / resize 0.5 + real JPEG | 99.45% / 99.34% | 99.17% / 99.02% |
 
-On this seed FGAS meets the criterion (`main_comparison_criterion.json`). This is a **single seed**: seeds 43 and 44 are the next runs, and the result should not be read as established until they are in.
+On this seed FGAS passes the test (`main_comparison_criterion.json`). This was a single seed; the 5-seed results are under [Final results](#final-results).
 
 FGAS moved its sampling toward crop: crop's probability was 29-38% after warm-up, against 1/7 ≈ 14% under uniform sampling. It took batches mainly from blur, resize and JPEG, which were already near 100%.
 
@@ -195,83 +197,19 @@ The canonical run for this section is [notebooks/checkin3_colab.ipynb](notebooks
 
 ## Final results
 
-### Main comparison over seeds: uniform vs FGAS
+**In short** (DIV2K test set, 5 seeds per method, Colab Tesla T4):
+- **FGAS makes the watermark much harder to break with the hardest attack (crop):** worst-case bit accuracy 94.05% vs 86.52% for uniform sampling, **+7.5 pp, better on 5 of 5 seeds**. Full messages survive cropping about 3× more often (47.6% vs 15.0%).
+- It is also ahead on the average over all attacks (+1.1 pp) and on full-message accuracy (+4.4 pp), on every seed.
+- The price is image quality: 35.4 vs 36.2 dB PSNR (both imperceptible), 0.3 dB over the limit we set before the runs.
+- A **fixed** attack mix equal to the one FGAS learns does as well as FGAS. The gain comes from training much more on the hardest attack; FGAS finds that mix automatically from validation failures.
+- The gain holds at every image-quality level we tried and for every FGAS setting (single-seed ablations).
 
-This is the pre-registered comparison: `hard_uniform` and `hard_fgas` (image-loss weight 200, 60 epochs) for seeds 42–46, scored on the DIV2K test set. Results are in [results/final/main/](results/final/main/).
+### Main result: uniform vs static mix vs FGAS (5 seeds)
 
-**Where each run trained:**
-- Seed 42 is the run from the hardened benchmark section above (Colab Tesla T4, PyTorch 2.11.0).
-- Seeds 43–46 ran on a Colab Tesla T4 with PyTorch 2.14.1.
-- `hard_fgas_s46` reached epoch 58 on Colab before the GPU quota ran out. It resumed from `last.pt` on a Kaggle Tesla T4 (PyTorch 2.11.0) for epochs 59–60 and the test evaluation. `run_info_colab.json` and `run_info.json` record the two environments.
-- The severity sweeps for seeds 43–46 also ran on that Kaggle T4.
-
-**Pre-registered result (n = 5 per method): the criterion is not met.**
-
-| | Uniform | FGAS |
-|---|---|---|
-| Worst attack bit accuracy | 79.85 ± 16.07% | 67.11 ± 23.84% |
-| Mean attacked bit accuracy | 88.17 ± 20.69% | 69.09 ± 26.49% |
-| Full-message accuracy | 60.14 ± 33.67% | 30.60 ± 41.90% |
-| PSNR | 45.30 ± 20.58 dB | 55.58 ± 20.43 dB |
-
-Paired per-seed differences (FGAS − uniform) are in `main_comparison_criterion.json`. FGAS has the better worst case on 2 of 5 seeds: +7.36 and +4.87 pp on seeds 42 and 46, and −1.31, −37.91 and −36.70 pp on seeds 43–45.
-
-**Why: four runs never learned the message.** In `hard_fgas_s43`, `hard_fgas_s44`, `hard_fgas_s45` and `hard_uniform_s43`, bit accuracy stayed at 50% (chance) from epoch 1 to the end. The image-loss ramp was then forced to start at its latest epoch, and the encoder learned to leave images almost unchanged, which is where the high PSNR (61–84 dB) comes from. [per_run.md](results/final/main/per_run.md) shows every run.
-
-Diagnosis (details and `metrics.csv` evidence in [#12](https://github.com/TaehunLeee5/CMPE258_Team7/issues/12)):
-- **The outcome is decided in epoch 2 of the shared warm-up, before FGAS acts.** During the warm-up (noise, blur, brightness and resize only, image-loss weight 1), uniform and FGAS training run the same code; the first FGAS update comes only after it ends.
-- **Runs that learn make loud changes first.** Their PSNR drops to about 17–21 dB in epoch 2, the decoder picks up the signal, and the image-loss ramp later makes the watermark imperceptible.
-- **Stuck runs go quiet first.** Their PSNR rises to about 34–41 dB in epoch 2. A residual of about 0.01 per pixel is roughly 10× below the noise attack (σ = 0.1), and blur and resize remove it too, so the decoder gets no signal and the image loss keeps shrinking the residual.
-- **It is not specific to FGAS.** Uniform fails too (`hard_uniform_s43`), and same-seed runs diverge on the GPU: `hard_uniform_s44` left chance at epoch 2, `hard_fgas_s44` did not. With n = 5, the 3-vs-1 split between methods cannot be told apart from chance.
-- The variant runs below hit the same failure once in 12 runs. Here it happened in 4 of the 8 new runs.
-
-| | |
-|---|---|
-| ![every run, one dot per seed](results/final/main/figures/per_run_strip.png) | ![uniform vs FGAS, mean ± std](results/final/main/figures/method_bars.png) |
-
-Left: bit accuracy of every run on the DIV2K test set, one dot per seed. 4 of 10 runs (FGAS seeds 43–45, uniform seed 43) never learned the message and sit at about 50% on every attack, including clean images. Among runs that learned it, FGAS is ahead on crop. Right: mean ± std over all five seeds, where the stuck runs dominate the bars.
-
-**Runs that learned the message (post hoc, not pre-registered).**
-
-| | Uniform (seeds 42, 44, 45, 46) | FGAS (seeds 42, 46) |
-|---|---|---|
-| Worst attack (crop) bit accuracy | 87.03 ± 0.69% | 93.22 ± 0.62% |
-| Mean attacked bit accuracy | 97.42% | 98.11% |
-| Full-message accuracy | 75.18% | 76.50% |
-| PSNR | 36.10 dB | 35.51 dB |
-
-On the two seeds where both methods learned the message, FGAS is ahead on the worst case by +7.36 and +4.87 pp, at −0.35 and −1.34 dB PSNR. This comparison was chosen after seeing the failures and covers only 2 FGAS runs, so it is descriptive, not a test of the criterion.
-
-**Severity sweep** (bit accuracy as each attack is made stronger, DIV2K test set):
-- [severity_sweep.png](results/final/main/figures/severity_sweep.png) covers all 5 seeds; the failed runs pull every curve down.
-- [severity_sweep_learned_runs.png](results/final/main/figures/severity_sweep_learned_runs.png) covers only the runs that learned the message. There, FGAS is ahead on stronger crops: 80.0% vs 71.5% at 50% kept, and 62.2% vs 57.1% at 35% kept. It is slightly behind on strong noise (85.0% vs 87.2% at std 0.2) and occlusion (88.2% vs 89.1% at 55%). Real JPEG down to quality 10 is about equal.
-
-| | |
-|---|---|
-| ![sweep, learned runs](results/final/main/figures/severity_sweep_learned_runs.png) | ![FGAS probabilities](results/final/main/figures/fgas_over_time.png) |
-
-Figure 1 at the current image quality (seed 42 FGAS, DIV2K test crops): [figure1.png](results/final/main/figures/figure1.png).
-
-Reproduce: in [notebooks/checkin3_colab.ipynb](notebooks/checkin3_colab.ipynb), add seeds 45 and 46 to `ALL_JOBS`, set `MY_JOBS` to `hard_{uniform,fgas}_s{43..46}`, and run (the sweep cell writes each run's `sweep.csv`). Then:
-
-```bash
-R=results/final/main/runs; F=results/final/main/figures
-python scripts/aggregate_seeds.py $R/hard_uniform_s* $R/hard_fgas_s* --out results/final/main/main_comparison \
-    --criterion hard_uniform hard_fgas
-python scripts/aggregate_seeds.py $R/hard_uniform_s* $R/hard_fgas_s* --no-group --out results/final/main/per_run
-python scripts/sweep.py --plot $R/hard_*_s*/sweep.csv --out $F/severity_sweep.png
-python scripts/sweep.py --plot $R/hard_uniform_s4{2,4,5,6}/sweep.csv $R/hard_fgas_s4{2,6}/sweep.csv \
-    --out $F/severity_sweep_learned_runs.png
-python scripts/report_figures.py --hard-dir results/final/main --out-dir $F --only method_bars per_run_strip fgas_over_time
-python scripts/figure1.py --checkpoint $R/hard_fgas_s42/best.pt --split test --indices 0 150 300 --out $F/figure1.png
-```
-
-### Fixed warm-up: uniform vs static mix vs FGAS
-
-This is a **new, separately labelled experiment** run after the diagnosis above. The pre-registered result in the previous subsection stays as reported. Results are in [results/final/warm0/](results/final/warm0/).
+Five seeds (42–46) per method, 60 epochs, image-loss weight 200, scored on the held-out DIV2K test set. All runs use the fixed warm-up described below; an earlier attempt without it is covered under [Training reliability](#training-reliability-the-first-attempt-and-the-warm-up-fix). Results are in [results/final/warm0/](results/final/warm0/).
 
 **The change:**
-- The image-loss weight is **0** during the attack warm-up (`train.image_loss_weight_start: 0.0`), instead of 1. Nothing pushes the residual towards zero before the message is learned, so the "quiet" collapse ([#12](https://github.com/TaehunLeee5/CMPE258_Team7/issues/12)) cannot start.
+- The image-loss weight is **0** during the attack warm-up (`train.image_loss_weight_start: 0.0`), instead of 1. Nothing pushes the residual towards zero before the message is learned, so the collapse seen in the first attempt ([#12](https://github.com/TaehunLeee5/CMPE258_Team7/issues/12)) cannot start.
 - Everything else is unchanged: after the warm-up, the weight ramps to 200 as before.
 - Configs: [hard_uniform_warm0.yaml](configs/hard_uniform_warm0.yaml) and [hard_fgas_warm0.yaml](configs/hard_fgas_warm0.yaml). Each differs from its parent only in that key, and they differ from each other only in `fgas` (checked by `tests/test_configs.py`).
 
@@ -281,7 +219,7 @@ This is a **new, separately labelled experiment** run after the diagnosis above.
 - It tests whether FGAS needs to *adapt* during training, or only to arrive at the right mix.
 
 **Protocol:**
-- Fixed before launch: seeds 42–46 for all three methods; the same pre-registered criterion and thresholds as the original comparison (uniform vs FGAS); FGAS vs static is descriptive only.
+- Fixed before launch: seeds 42–46 for all three methods, and the success test below (uniform vs FGAS, the same thresholds as the first attempt). FGAS vs static is descriptive only.
 - A development check on the seeds that had collapsed (43–45, 12 epochs) passed before the official runs ([#13](https://github.com/TaehunLeee5/CMPE258_Team7/issues/13)).
 - All 15 runs trained for 60 epochs on a Colab Tesla T4:
   - seeds 42–44 from commit `c62de5d`;
@@ -304,7 +242,7 @@ This is a **new, separately labelled experiment** run after the diagnosis above.
 
 Mean ± sample std over 5 seeds, DIV2K test set ([main_comparison.md](results/final/warm0/main_comparison.md), [per_run.md](results/final/warm0/per_run.md)).
 
-**Pre-registered criterion (uniform vs FGAS): not met, on image quality only** ([main_comparison_criterion.json](results/final/warm0/main_comparison_criterion.json)).
+**Success test (set before the runs): robustness passed easily; image quality missed the limit by 0.3 dB** ([main_comparison_criterion.json](results/final/warm0/main_comparison_criterion.json)).
 
 | Check | Required | Result | Pass |
 |---|---|---|---|
@@ -322,11 +260,11 @@ Mean ± sample std over 5 seeds, DIV2K test set ([main_comparison.md](results/fi
 | Full-message (pp) | +3.07 | +8.61 | +3.32 | +0.14 | +6.79 | +4.39 ± 3.33 |
 | PSNR (dB) | −0.51 | −1.40 | +0.37 | −1.41 | −1.08 | −0.80 ± 0.75 |
 
-FGAS has the better worst case on **5 of 5** seeds, and a higher mean attacked and full-message accuracy on every seed. It costs 0.80 dB of PSNR on average, which exceeds the 0.5 dB limit, so the criterion fails.
+FGAS has the better worst case on **5 of 5** seeds, and a higher mean attacked and full-message accuracy on every seed. It costs 0.80 dB of PSNR on average. Both methods stay around 35–36 dB, but 0.80 dB is over the 0.5 dB limit we set in advance, so we count the test as not passed.
 
 For scale (post hoc, from the single-seed trade-off runs below, original warm-up): uniform sampling gains about 1.8 pp of worst-case accuracy per dB of PSNR it gives up (weight 200 → 100: +4.05 pp for −2.27 dB). Bought that way, 0.8 dB would be worth roughly 1.4 pp, against FGAS's +7.5 pp. This is a rough comparison, not a test.
 
-**FGAS vs the static mix** ([static_vs_fgas_criterion.json](results/final/warm0/static_vs_fgas_criterion.json); descriptive, as fixed in advance):
+**FGAS vs the static mix** ([static_vs_fgas_criterion.json](results/final/warm0/static_vs_fgas_criterion.json); descriptive, as decided before the runs):
 - Paired FGAS − static: worst case −0.01 ± 1.03 pp (FGAS better on 1 of 5 seeds), mean attacked +0.07 ± 0.32 pp, full-message +0.62 ± 3.34 pp, PSNR +0.15 ± 0.50 dB.
 - The two are **indistinguishable**. The gain over uniform comes from the final attack mix (much more crop), not from adapting it during training.
 - The PSNR cost also comes from the mix: the static mix is 0.95 dB below uniform.
@@ -346,7 +284,7 @@ The crop gain holds beyond the training strength. The crop-heavy mixes (static a
 
 | | |
 |---|---|
-| ![uniform vs static vs FGAS, mean ± std](results/final/warm0/figures/method_bars.png) | ![every run, one dot per seed](results/final/warm0/figures/per_run_strip.png) |
+| ![every run, one dot per seed](results/final/warm0/figures/per_run_strip.png) | ![uniform vs static vs FGAS, mean ± std](results/final/warm0/figures/method_bars.png) |
 | ![severity sweep](results/final/warm0/figures/severity_sweep.png) | ![FGAS probabilities, seed 42](results/final/warm0/figures/fgas_over_time.png) |
 
 **Sampling vs loss weighting** ([#15](https://github.com/TaehunLeee5/CMPE258_Team7/issues/15); seed 42 only, exploratory; [sampling_vs_lossweight.md](results/final/warm0/sampling_vs_lossweight.md)).
@@ -391,7 +329,7 @@ python scripts/report_figures.py --hard-dir $W --out-dir $W/figures --only metho
 
 ### FGAS variants and image-quality trade-off
 
-All runs are seed 42 on a Colab Tesla T4, use the hardened benchmark above (60 epochs, same warm-ups) and are scored on the DIV2K test set. Results are in [results/final/variants/](results/final/variants/). These runs are **single-seed and exploratory**; they are not part of the pre-registered criterion. "Full-message" is the mean over the 7 training attacks of the fraction of images with all 32 bits correct.
+All runs are seed 42 on a Colab Tesla T4, use the hardened benchmark above (60 epochs, same warm-ups) and are scored on the DIV2K test set. Results are in [results/final/variants/](results/final/variants/). These runs are **single-seed and exploratory**; they are not part of the success test. "Full-message" is the mean over the 7 training attacks of the fraction of images with all 32 bits correct.
 
 **Trade-off at matched image quality.** FGAS and uniform sampling were also trained at image-loss weights 100 and 400 (`--set train.image_loss_weight=...`); weight 200 is the main comparison.
 
@@ -420,11 +358,11 @@ All runs are seed 42 on a Colab Tesla T4, use the hardened benchmark above (60 e
 | update every epoch | `hard_fgas_int1` | 35.30 | 94.80% | 98.50% | 79.29% |
 | update every 5 epochs | `hard_fgas_int5` | 35.87 | 93.10% | 98.20% | 77.54% |
 | power 2 | `hard_fgas_p2` | 35.26 | 94.52% | 98.31% | 78.25% |
-| loss weighting (`fgas.mode: loss_weight`) | `hard_fgas_lossweight` | did not learn the message; rerun with the fixed warm-up, see above | | | |
+| loss weighting (`fgas.mode: loss_weight`) | `hard_fgas_lossweight` | did not learn the message; rerun with the fixed warm-up, see the main result | | | |
 
 - Every FGAS variant beats uniform on the worst case by 5.9 to 8.5 pp. The variants differ from each other by at most 2.6 pp on one seed, so they should not be ranked on these numbers.
 - The higher floor (0.10, closer to uniform sampling) gives the smallest gain. Four of the five variants have 0.27 to 0.44 dB lower PSNR than default FGAS; updating every 5 epochs is 0.17 dB higher.
-- The first loss-weighting run never learned the message: bit accuracy stayed at 50% from epoch 1, during the shared attack warm-up when every loss weight is still 1, so loss weighting never took effect. Same-seed runs differ on the GPU, and this was the only one of 12 that did not leave chance within the warm-up. It is kept as `runs/hard_fgas_lossweight_failed_s42`. The rerun used the fixed warm-up and is compared with uniform and FGAS under the same warm-up in "Sampling vs loss weighting" above.
+- The first loss-weighting run never learned the message: bit accuracy stayed at 50% from epoch 1, during the shared attack warm-up when every loss weight is still 1, so loss weighting never took effect. Same-seed runs differ on the GPU, and this was the only one of 12 that did not leave chance within the warm-up. It is kept as `runs/hard_fgas_lossweight_failed_s42`. The rerun used the fixed warm-up and is compared with uniform and FGAS under the same warm-up in "Sampling vs loss weighting" under the main result.
 
 | | |
 |---|---|
@@ -448,6 +386,47 @@ python scripts/aggregate_seeds.py $V/runs/hard_fgas_{floor,int,p2,lossweight}*_s
 python scripts/report_figures.py --hard-dir results/checkin3 --out-dir $V/figures --only trade_off ablations
 ```
 
+### Training reliability: the first attempt and the warm-up fix
+
+The first 5-seed attempt (`hard_uniform` / `hard_fgas`, seeds 42–46, results in [results/final/main/](results/final/main/)) used an image-loss weight of 1 during the attack warm-up instead of 0. **4 of its 10 runs never learned the message** (`hard_fgas_s43`–`s45` and `hard_uniform_s43`). They stayed at 50% (chance) on every attack, including clean images, with PSNR of 61–84 dB because the encoder learned to leave images unchanged.
+
+Averaging those broken runs in pulls both methods down, and FGAS more (3 broken runs vs 1). So that attempt did not pass the same success test: worst case 67.1% vs 79.9% with the broken runs included ([main_comparison.md](results/final/main/main_comparison.md), [per_run.md](results/final/main/per_run.md)). On the two seeds where both methods learned the message, FGAS was ahead on crop by +7.4 and +4.9 pp, the same pattern as the main result.
+
+**What went wrong** (evidence in [#12](https://github.com/TaehunLeee5/CMPE258_Team7/issues/12)):
+- The outcome is decided in **epoch 2 of the shared warm-up, before FGAS does anything**. Uniform and FGAS run identical code until then.
+- Runs that learn first make large, visible changes (PSNR about 17–21 dB), the decoder picks them up, and the image-loss ramp later makes the watermark invisible.
+- Stuck runs shrink their changes first (PSNR about 34–41 dB). At about 0.01 per pixel, the signal is roughly 10× below the noise attack, so the decoder never sees it, and the image loss keeps pushing it towards zero.
+- It is not specific to FGAS: uniform got stuck too, and even same-seed runs diverge on the GPU (`hard_uniform_s44` learned, `hard_fgas_s44` did not).
+
+**The fix:** an image-loss weight of 0 until the message is learned. A check on exactly the seeds that had failed passed 6 of 6 ([#13](https://github.com/TaehunLeee5/CMPE258_Team7/issues/13)), and all 15 runs of the main result learned the message.
+
+![first attempt: every run, one dot per seed](results/final/main/figures/per_run_strip.png)
+
+Every run of the first attempt, one dot per seed: the 4 stuck runs sit at 50% on every attack.
+
+<details>
+<summary>Where the first-attempt runs trained, and how to reproduce them</summary>
+
+- Seed 42 is the run from the hardened benchmark section above (Colab Tesla T4, PyTorch 2.11.0); seeds 43–46 ran on a Colab Tesla T4 with PyTorch 2.14.1.
+- `hard_fgas_s46` reached epoch 58 on Colab before the GPU quota ran out and resumed from `last.pt` on a Kaggle Tesla T4 (PyTorch 2.11.0) for epochs 59–60 and the test evaluation (`run_info_colab.json`, `run_info.json`). The severity sweeps for seeds 43–46 also ran on that Kaggle T4.
+- Other figures: [mean ± std bars](results/final/main/figures/method_bars.png) (dominated by the stuck runs), [severity sweep, learned runs](results/final/main/figures/severity_sweep_learned_runs.png), [FGAS probabilities](results/final/main/figures/fgas_over_time.png), [Figure 1](results/final/main/figures/figure1.png).
+
+Reproduce: in [notebooks/checkin3_colab.ipynb](notebooks/checkin3_colab.ipynb), add seeds 45 and 46 to `ALL_JOBS`, set `MY_JOBS` to `hard_{uniform,fgas}_s{43..46}`, and run (the sweep cell writes each run's `sweep.csv`). Then:
+
+```bash
+R=results/final/main/runs; F=results/final/main/figures
+python scripts/aggregate_seeds.py $R/hard_uniform_s* $R/hard_fgas_s* --out results/final/main/main_comparison \
+    --criterion hard_uniform hard_fgas
+python scripts/aggregate_seeds.py $R/hard_uniform_s* $R/hard_fgas_s* --no-group --out results/final/main/per_run
+python scripts/sweep.py --plot $R/hard_*_s*/sweep.csv --out $F/severity_sweep.png
+python scripts/sweep.py --plot $R/hard_uniform_s4{2,4,5,6}/sweep.csv $R/hard_fgas_s4{2,6}/sweep.csv \
+    --out $F/severity_sweep_learned_runs.png
+python scripts/report_figures.py --hard-dir results/final/main --out-dir $F --only method_bars per_run_strip fgas_over_time
+python scripts/figure1.py --checkpoint $R/hard_fgas_s42/best.pt --split test --indices 0 150 300 --out $F/figure1.png
+```
+
+</details>
+
 ## Repository layout
 
 ```
@@ -463,18 +442,15 @@ results/      Colab T4 results (JSON/CSV), baseline checkpoint, figures/; checki
               final/variants/ (image-weight trade-off and FGAS ablations)
 ```
 
-## Team ownership and next steps
+## Team contributions
 
-| Member | Ownership | Status |
-|---|---|---|
-| Sabari Iyyappan Duraipandian | Repo structure, DIV2K pipeline, encoder/decoder, distortion layer, uniform sampling, attack-wise validation, FGAS scoring/update, training integration | Done |
-| Niveditha Nandakumar Kamath | Dataset validation, PSNR/SSIM validation, qualitative figures | TODO below |
-| Taehun Lee | Baseline experiment runs, robustness benchmark, tables and plots | Done |
+| Member | Contributions |
+|---|---|
+| Sabari Iyyappan Duraipandian | Repo structure, DIV2K pipeline, encoder/decoder, distortion layer, uniform sampling, attack-wise validation, FGAS scoring/update and training integration; FGAS variants (loss-weighting mode, ablation configs), trade-off and ablation figures; warm-up diagnosis and fix, static-mix baseline, fixed-warm-up results |
+| Niveditha Nandakumar Kamath | Dataset and PSNR/SSIM validation, COCO pipeline and held-out test split, Figure 1, full-message and paired per-seed statistics, severity sweep, first 5-seed comparison, per-run strip plot, fixed-warm-up runs for seeds 45–46 |
+| Taehun Lee | Baseline experiment runs, robustness benchmark, tables and plots, U-Net + squeeze-and-excitation encoder option, Gradio demo ([notebooks/demo_colab.ipynb](notebooks/demo_colab.ipynb)) |
 
-**TEAM_TODO, Niveditha**
-Run `python scripts/validate_div2k.py` after preprocessing to check the manifest, split contents, RGB mode, resized dimensions, and to export deterministic validation-crop examples under `results/div2k_samples/`. The PSNR/SSIM unit test cross-checks the local metrics against `skimage.metrics`.
-
-Generate Figure 1 after the baseline checkpoint is available with `python scripts/figure1.py --checkpoint results/baseline_uniform/best.pt`. The script uses fixed validation crops and seeded messages; its third column is the amplified absolute pixel difference (10x), not the unscaled residual.
+Validation helpers: `python scripts/validate_div2k.py` checks the prepared DIV2K manifest and exports fixed validation-crop examples; `python scripts/figure1.py --checkpoint <best.pt>` draws Figure 1 (cover, watermarked, 10× amplified difference).
 
 ### Dataset and literature context
 
@@ -482,14 +458,7 @@ DIV2K is a high-resolution image dataset introduced for image restoration resear
 
 HiDDeN established an end-to-end learned image-watermarking approach in which an encoder embeds a message, differentiable distortions model common image transformations, and a decoder recovers the message. Watermark Anything with Localized Messages and Lightweight-Mark represent subsequent work on localized watermarking and efficient learned watermarking, respectively. This project adopts the encoder-distortion-decoder framing but studies a different question: whether redistributing training batches toward attacks with lower validation bit accuracy improves worst-case robustness relative to uniform attack sampling. The proposed Failure-Guided Attack Sampling (FGAS) rule uses attack-wise validation failures to adjust sampling probabilities while retaining a minimum probability for every attack; controlled comparisons should use the same model, data, and training budget.
 
-The prepared DIV2K cache and `results/baseline_uniform/best.pt` are not included in a fresh clone. The validation command and Figure 1 generation therefore require the dataset preparation steps above and the baseline run to be completed first; report numerical findings only after those runs.
-
-**TEAM_TODO, Taehun[DONE]**
-- Table 1 and Figure 2 from `results/baseline_eval.json` (clean, noise, blur, brightness, resize).
-- Figure 3: training curves from `results/baseline_uniform/metrics.csv`.
-- Table 2 from `results/fgas_update.csv`.
-- Experiment D, run on Colab T4 (last cells of the notebook): `configs/fgas.yaml` vs. `configs/baseline_continue.yaml`, comparing per-attack and worst-case accuracy.
-- Experimental-setup and preliminary-results text.
+The prepared DIV2K cache and `results/baseline_uniform/best.pt` are not included in a fresh clone. The validation command and Figure 1 generation therefore require the dataset preparation steps above and the baseline run to be completed first.
 
 ## References
 
