@@ -100,3 +100,9 @@ def test_warm0_groups_get_bars_and_fgas_history(tmp_path, monkeypatch):
     figures.method_bars(tmp_path)
     figures.fgas_over_time(tmp_path)
     assert (tmp_path / "method_bars.png").exists() and (tmp_path / "fgas_over_time.png").exists()
+
+
+def test_pipeline_and_architecture_diagrams(tmp_path):
+    figures.pipeline(tmp_path)
+    figures.architecture(tmp_path)
+    assert (tmp_path / "pipeline.png").exists() and (tmp_path / "architecture.png").exists()
