@@ -5,6 +5,7 @@
 
 Figures (DIV2K baseline):
   architecture     pipeline diagram (encoder -> sampled attack -> decoder, FGAS loop)
+  pipeline         the same diagram for the hardened benchmark (7 attacks, image-loss weight 0 -> 200)
   robustness       per-attack bit / full-message accuracy (results/baseline_eval.json)
   training_curves  accuracy, PSNR and image-loss weight per epoch (results/baseline_uniform/metrics.csv)
   fgas_probs       uniform vs FGAS sampling probabilities (results/fgas_update.csv)
@@ -59,6 +60,24 @@ def _save(fig, out_dir, name):
 
 
 def architecture(out_dir):
+    _diagram(out_dir, "architecture", "DIV2K crop\n3 × 128 × 128",
+             "one attack per batch, a ~ p(a)\nGaussian noise σ = 0.1\nGaussian blur 9×9, σ = 2\n"
+             "brightness × U[0.3, 1.7]\nresize ×0.25 and back",
+             "20 · MSE(I_w, I)\n+ BCE(logits, m)\n\nimage weight\nwarm-up 1 → 20",
+             "Baseline:  p(a) = 1/4 for every attack\nProposed: p(a) re-estimated by FGAS")
+
+
+def pipeline(out_dir):
+    """The architecture diagram for the hardened benchmark (7 attacks, image-loss weight 0 -> 200)."""
+    _diagram(out_dir, "pipeline", "COCO crop (train)\nDIV2K crop (test)\n3 × 128 × 128",
+             "one attack per batch, a ~ p(a)\nnoise · blur · brightness\nresize · JPEG (differentiable)\n"
+             "crop 50–80% · occlusion 10–25%\n\ntest only: real JPEG Q50,\nresize 0.5 + real JPEG",
+             "λ · MSE(I_w, I)\n+ BCE(logits, m)\n\nλ = 0 until the\nmessage is learned,\nthen ramp → 200",
+             "Uniform: p(a) = 1/7 for every attack\nFGAS:    p(a) from validation failures,\n"
+             "         updated every 2 epochs")
+
+
+def _diagram(out_dir, name, cover_body, attack_body, loss_body, legend):
     fig, ax = plt.subplots(figsize=(12, 5))
     ax.set_xlim(-1, 124)
     ax.set_ylim(-1, 45)
@@ -77,18 +96,15 @@ def architecture(out_dir):
         if text:
             ax.text((x1 + x2) / 2 + tx, (y1 + y2) / 2 + ty, text, ha="center", fontsize=8, color=color)
 
-    box(0, 31, 16, 11, "Cover image", "DIV2K crop\n3 × 128 × 128", "#f4f4f4", "#666666")
+    box(0, 31, 16, 11, "Cover image", cover_body, "#f4f4f4", "#666666", size=7.4)
     box(0, 16, 16, 11, "Message m", "32 random bits", "#f4f4f4", "#666666")
     box(22, 16, 27, 26, "Encoder",
         "4 × Conv-BN-ReLU on cover\n+ learned message map\n(Linear 32 → 8×16×16,\n"
         "block-upsampled to 128×128)\n→ fuse conv → 1×1 residual r\nI_w = clamp(I + r, 0, 1)", size=7.8)
-    box(55, 16, 23, 26, "Distortion layer",
-        "one attack per batch, a ~ p(a)\nGaussian noise σ = 0.1\nGaussian blur 9×9, σ = 2\n"
-        "brightness × U[0.3, 1.7]\nresize ×0.25 and back", "#fdf1e3", "#dd8a2c", size=7.8)
+    box(55, 16, 23, 26, "Distortion layer", attack_body, "#fdf1e3", "#dd8a2c", size=7.6)
     box(84, 16, 18, 26, "Decoder", "7 × Conv-BN-ReLU\n(3 stride-2 stages)\n→ 4×4 avg-pool\n→ Linear\n→ 32 logits",
         size=7.8)
-    box(108, 24, 15, 18, "Loss", "20 · MSE(I_w, I)\n+ BCE(logits, m)\n\nimage weight\nwarm-up 1 → 20",
-        "#eef7ee", "#2f855a", size=7.8)
+    box(108, 20, 15, 22, "Loss", loss_body, "#eef7ee", "#2f855a", size=7.8)
 
     arrow(16, 36.5, 22, 33)
     arrow(16, 21.5, 22, 25)
@@ -101,9 +117,8 @@ def architecture(out_dir):
         "p(a) = floor + (1 − K·floor) · failure_a / Σ failure", "#fbeaea", "#c0392b", size=7.8)
     arrow(93, 16, 92.5, 6, "attack-wise\nvalidation", color="#c0392b", ls="--", rad=-0.35, tx=9, ty=-1)
     arrow(66.5, 10.4, 66.5, 16, "updated p(a)", color="#c0392b", ls="--", tx=7, ty=-1.2)
-    ax.text(0, 6, "Baseline:  p(a) = 1/4 for every attack\nProposed: p(a) re-estimated by FGAS",
-            fontsize=8.5, va="center", color="#444444")
-    _save(fig, out_dir, "architecture")
+    ax.text(0, 6, legend, fontsize=8.5, va="center", color="#444444", family="monospace")
+    _save(fig, out_dir, name)
 
 
 def robustness(out_dir):
@@ -505,7 +520,7 @@ def new_attack_examples(out_dir, run="hard_uniform_s42", index=10):
     _save(fig, out_dir, "new_attack_examples")
 
 
-FIGURES = {"architecture": architecture, "robustness": robustness, "training_curves": training_curves,
+FIGURES = {"architecture": architecture, "pipeline": pipeline, "robustness": robustness, "training_curves": training_curves,
            "fgas_probs": fgas_probs, "attack_examples": attack_examples, "method_bars": method_bars,
            "per_run_strip": per_run_strip,
            "fgas_over_time": fgas_over_time, "trade_off": trade_off,
