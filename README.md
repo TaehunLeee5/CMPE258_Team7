@@ -153,6 +153,60 @@ Single seed (42); each variant changes one setting ([configs/](configs/), checke
 
 Every variant beats uniform by 5.9–8.5 pp: the method does not depend on careful tuning. With one seed, the variants should not be ranked against each other.
 
+### U-Net-SE encoder comparison
+
+We evaluated a U-Net encoder with squeeze-and-excitation blocks using uniform
+sampling and FGAS over seeds 42–44. Each model trained for 60 epochs on COCO
+and was evaluated on the held-out DIV2K test set.
+
+Both methods used a starting image-loss weight of 0.01, a latest ramp-start
+epoch of 20, an eight-epoch ramp, and a final image-loss weight of 200.
+These settings enabled learning in the DIV2K development run, but all six
+COCO comparison runs remained near chance training accuracy.
+
+| Test metric | Uniform | FGAS |
+|---|---:|---:|
+| Clean bit accuracy (%) | 49.86 ± 0.52 | 50.41 ± 0.57 |
+| Worst-case bit accuracy (%) | 49.83 ± 0.52 | 50.35 ± 0.56 |
+| Mean attacked bit accuracy (%) | 49.85 ± 0.52 | 50.40 ± 0.57 |
+| Mean attacked full-message accuracy (%) | 0.00 ± 0.00 | 0.00 ± 0.00 |
+| PSNR (dB) | 69.35 ± 2.97 | 64.98 ± 13.40 |
+
+Values are mean ± sample standard deviation across three seeds.
+The paired worst-case difference, FGAS minus uniform, was
++0.52 ± 0.79 percentage points. The comparison criterion was not met.
+Training must become reliable before these experiments can establish
+whether FGAS improves recovery with this encoder.
+
+Results, per-run configurations, logs, and evaluation files are available
+in [results/final/unet](results/final/unet/).
+The [criterion JSON](results/final/unet/unet_comparison_criterion.json)
+includes paired per-seed differences.
+
+To reproduce one matched pair after preparing COCO and DIV2K data:
+
+```bash
+python scripts/train.py --config configs/hard_uniform_unet.yaml \
+  --set experiment.name=hard_uniform_unet_s42 experiment.seed=42
+
+python scripts/train.py --config configs/hard_fgas_unet.yaml \
+  --set experiment.name=hard_fgas_unet_s42 experiment.seed=42
+```
+
+Repeat with seeds 43 and 44, updating both the experiment name and seed.
+Each completed run evaluates its selected checkpoint on the held-out
+DIV2K test set.
+
+To regenerate the comparison table and criterion report from the saved runs:
+
+```bash
+python scripts/aggregate_seeds.py \
+  results/final/unet/runs/hard_uniform_unet_s* \
+  results/final/unet/runs/hard_fgas_unet_s* \
+  --out results/final/unet/unet_comparison \
+  --criterion hard_uniform_unet hard_fgas_unet
+```
+
 **Re-weighting sampling vs re-weighting the loss** (seed 42). Instead of drawing hard attacks more often, the loss of hard attacks can be multiplied up (as in Group DRO). Using the same FGAS signal both ways: hardest attack 84.00% (uniform) → 91.20% (loss weighting) → **93.52% (sampling, FGAS)**, all at about 35.4–35.9 dB ([sampling_vs_lossweight.md](results/final/warm0/sampling_vs_lossweight.md)). On this seed, changing *what the model sees* works better than changing *how much each mistake counts*.
 
 ### What the watermark looks like
